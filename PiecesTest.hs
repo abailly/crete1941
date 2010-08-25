@@ -1,7 +1,8 @@
 module PiecesTest(module Test.HUnit,
                   movementRules) where
 import Test.HUnit
-import Pieces
+import MovementRules
+import Terrain.Simple
 
 should n = (n ~:) . TestList  
 for    n = (n ~:)
