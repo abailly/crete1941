@@ -1,6 +1,7 @@
 module Main where
 import PiecesTest
 import IO(stderr)
+import Test.HUnit
 import System.Exit
 import System.IO
 

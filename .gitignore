@@ -1,0 +1,12 @@
+target/
+*~
+\#*
+.project
+.settings
+.eclipse
+.classpath
+*.o
+*.hi
+*.a
+dist/
+*.exe

@@ -6,6 +6,12 @@ import qualified Data.Map as M
 class Terrain t where
   -- | Tell whether or not two zones identified by their name are connected or not
   connection  :: t -> Name -> Name -> Maybe Bool
+  -- | Gives the current location of the given named unit within the terrain
+  unitLocation :: t -> Name -> Name
+  -- | Gives the zone data associated with given name
+  zone  :: t -> Name -> Zone
+  -- | Ensure unit's position is modified
+  updateUnitPosition :: t -> Name -> Name -> t
   
 isConnectedByRoadTo :: (Terrain t) => t -> Name -> Name -> Bool
 isConnectedByRoadTo t n1 n2 = connection t n1 n2 == Just True
@@ -42,7 +48,5 @@ data Zone = Zone { zoneName              :: Name,
           deriving (Eq, Show, Read)
 
 type HasRoad = Bool
-
-type Zones = M.Map Name Zone
 
 type Units = M.Map Name Unit

@@ -1,8 +1,9 @@
-module PiecesTest(module Test.HUnit,
-                  movementRules) where
+module PiecesTest where
 import Test.HUnit
 import MovementRules
 import Terrain.Simple
+import Control.Monad.State
+import qualified Data.Map as M
 
 should n = (n ~:) . TestList  
 for    n = (n ~:)
@@ -21,13 +22,15 @@ roadCountry = Zone "CountryRoad" Unoccupied [Wood] Hilly
 mountain    = Zone "Mountain" Unoccupied [Wood] Mountain
 strategicZone    = Zone "A" Unoccupied [Strategic] Mountain
 nonAdjacentZone = Zone "Other" Unoccupied [Clear] Flat
-terrain     = [("Rethymnon",[("Beach", True),
-                             ("Country", False),
-                             ("Rough", False),
-                             ("Country", False),
-                             ("CountryRoad", True),
-                             ("Mountain", False),
-                             ("A", False)])]
+terrain     = Theater [("Rethymnon",[("Beach", True),
+                                     ("Country", False),
+                                     ("Rough", False),
+                                     ("Country", False),
+                                     ("CountryRoad", True),
+                                     ("Mountain", False),
+                                     ("A", False)])]
+              (M.fromList [("Campbell", "Rethymnon"), ("hq1", "Beach")]) 
+              (M.fromList [("Rethymnon", rethymnon), ("Beach", beach)])
 
 britishControlled (Zone n _ t l) = Zone n (Occupied (Left British)) t l
 germanControlled (Zone n _ t l)  = Zone n (Occupied (Left German)) t l
@@ -47,15 +50,29 @@ movementRules = test [
      roadCountry     `mpsForHQFromRethymnonIs` Just 1,    
      nonAdjacentZone `mpsForHQFromRethymnonIs` Nothing
      ],
+  
   "cost of movement to controlled & contested zones" `should` [
     britishControlled roughWithRoad `mpsForHQFromRethymnonIs` Just 2,
     germanControlled roadCountry `mpsForBritishHQFromRethymnonIs` Just 2,
     contested mountain `mpsForHQFromRethymnonIs` Just 5,
     contested mountain `mpsForBritishHQFromRethymnonIs` Just 5
     ],
+  
   "cost of movement for mechanized units" `should` [
     roughWithRoad `mpsForMechFromRethymnonIs` (Just 1),
     roughNoRoad   `mpsForMechFromRethymnonIs` Nothing
+    ],
+  
+  "unit initial location" `should` [
+    "be drawn from terrain definition" `for` TestList [
+       unitLocation terrain "Campbell" ~?= "Rethymnon",
+       unitLocation terrain "hq1" ~?= "Beach"
+       ]
+    ],
+  
+  "moving unit to target zone" `should` [
+    "change unit's location in terrain if it has enough MPs" `for`
+    unitLocation (execState (move britishHQ "Beach") terrain) "Campbell" ~?= "Beach"
     ]
   ]
                 
