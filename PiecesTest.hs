@@ -12,7 +12,7 @@ infixl 0 `for`
 
 germanHQ    = Unit "hq1" German Full (UnitState 0 3 8)  DivisionHQ Nothing
 britishHQ    = Unit "Campbell" British Full (UnitState 0 3 8)  DivisionHQ Nothing
-germanArm   = Unit "arm1" German Full (UnitState 0 3 8)  Armoured Nothing
+germanArm   = Unit "arm1" German Full (UnitState 0 3 1)  Armoured Nothing
 rethymnon   = Zone "Rethymnon" Unoccupied [City,Port] Flat
 beach       = Zone "Beach" Unoccupied [Clear,Port,Beach] Flat
 roughWithRoad       = Zone "Rough" Unoccupied [Clear, Road] Rough
@@ -29,8 +29,13 @@ terrain     = Theater [("Rethymnon",[("Beach", True),
                                      ("CountryRoad", True),
                                      ("Mountain", False),
                                      ("A", False)])]
-              (M.fromList [("Campbell", "Rethymnon"), ("hq1", "Beach")]) 
-              (M.fromList [("Rethymnon", rethymnon), ("Beach", beach)])
+              (M.fromList [("Campbell", "Rethymnon"), 
+                           ("hq1", "Beach"),
+                           ("arm1", "Rethymnon")]) 
+              (M.fromList [("Rethymnon", rethymnon), 
+                           ("Beach", beach), 
+                           ("CountryRoad",roadCountry),
+                           ("Country",countryside)])
 
 britishControlled (Zone n _ t l) = Zone n (Occupied (Left British)) t l
 germanControlled (Zone n _ t l)  = Zone n (Occupied (Left German)) t l
@@ -65,14 +70,16 @@ movementRules = test [
   
   "unit initial location" `should` [
     "be drawn from terrain definition" `for` TestList [
-       unitLocation terrain "Campbell" ~?= "Rethymnon",
-       unitLocation terrain "hq1" ~?= "Beach"
+       unitLocation "Campbell" terrain  ~?= "Rethymnon",
+       unitLocation "hq1" terrain ~?= "Beach"
        ]
     ],
   
   "moving unit to target zone" `should` [
     "change unit's location in terrain if it has enough MPs" `for`
-    unitLocation (execState (move britishHQ "Beach") terrain) "Campbell" ~?= "Beach"
+    unitLocation "Campbell" (execState (move britishHQ "Beach") terrain)  ~?= "Beach",
+    "don't change unit's location in terrain it it has not enough MPs" `for`
+    unitLocation "arm1" (execState (move germanArm "Country") terrain)  ~?= "Rethymnon"
     ]
   ]
                 

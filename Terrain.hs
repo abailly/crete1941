@@ -1,17 +1,29 @@
+{-# LANGUAGE MultiParamTypeClasses, FunctionalDependencies #-}
+
 module Terrain where
 import Common
 import Units
 import qualified Data.Map as M
+import Control.Monad.State
 
 class Terrain t where
   -- | Tell whether or not two zones identified by their name are connected or not
   connection  :: t -> Name -> Name -> Maybe Bool
   -- | Gives the current location of the given named unit within the terrain
-  unitLocation :: t -> Name -> Name
+  unitLocation :: Name  -> t -> Name
   -- | Gives the zone data associated with given name
   zone  :: t -> Name -> Zone
+  
+class (Terrain t, MonadState t m) => BattleMap m t where 
+  -- | Tell whether or not two zones identified by their name are connected or not
+  areConnected  :: Name -> Name -> m (Maybe Bool)
+  -- | Gives the current location of the given named unit within the terrain
+  whereIs :: Name -> m Name
+  -- | Gives the zone data associated with given name
+  zoneDataFor  :: Name -> m Zone
   -- | Ensure unit's position is modified
-  updateUnitPosition :: t -> Name -> Name -> t
+  updateUnitPosition :: Name -> Name -> m ()
+  
   
 isConnectedByRoadTo :: (Terrain t) => t -> Name -> Name -> Bool
 isConnectedByRoadTo t n1 n2 = connection t n1 n2 == Just True

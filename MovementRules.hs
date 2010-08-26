@@ -16,11 +16,14 @@ import Control.Monad.State
 -- |Moves a unit to the given named zone.
 -- This function updates the terrain so that the unit's location
 -- will be its destination zone, iff the unit has enough movement 
--- points to go to the location
+-- points to go to the location. As it updates some state, this function
+-- works inside a state monad and returns the arrival zone.
+move :: (Terrain t, BattleMap m t) => Unit -> Name -> m Zone
 move u dest = do terrain <- get
-                 let [from,to] = map (zone terrain) [unitLocation terrain (unitName u), dest]
+                 src <- whereIs (unitName u)
+                 let [from,to] = map (zone terrain) [src, dest]
                  let res = if unitCanMoveTo terrain u from to  then to else from
-                 put $ updateUnitPosition terrain (unitName u) (zoneName res)
+                 updateUnitPosition (unitName u) (zoneName res)
                  return res
 
 -- |Select whether a unit can move to a given zone, given a terrain
