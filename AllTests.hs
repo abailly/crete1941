@@ -5,7 +5,8 @@ import Test.HUnit
 import System.Exit
 import System.IO
 
-tests = test [movementRules]
+tests = test [unitManipulations,
+              movementRules]
 
 main = do counts <- runTest tests
           case (errors counts + failures counts) of

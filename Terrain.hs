@@ -21,8 +21,9 @@ class (Terrain t, MonadState t m) => BattleMap m t where
   whereIs :: Name -> m Name
   -- | Gives the zone data associated with given name
   zoneDataFor  :: Name -> m Zone
-  -- | Ensure unit's position is modified
-  updateUnitPosition :: Unit -> Zone -> m ()
+  -- | Ensure unit's position is modified and its current MPs are depleted 
+  -- accordingly
+  updateUnitPosition :: Unit -> Zone -> Int -> m Unit
   
   
 isConnectedByRoadTo :: (Terrain t) => t -> Name -> Name -> Bool

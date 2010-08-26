@@ -17,21 +17,24 @@ import Control.Monad.State
 -- This function updates the terrain so that the unit's location
 -- will be its destination zone, iff the unit has enough movement 
 -- points to go to the location. As it updates some state, this function
--- works inside a state monad and returns the arrival zone.
-move :: (BattleMap m t) => Unit -> Name -> m ()
+-- works inside a state monad. It returns the unit (possibly modified if 
+-- some MPs were consumed).
+move :: (BattleMap m t) => Unit -> Name -> m Unit
 move u dest = do terrain <- get
                  src <- whereIs (unitName u)
                  let [from,to] = map (zone terrain) [src, dest]
-                 tryMovingUnit u from to >>= updateUnitPosition u
-
+                 tryMovingUnit u from to >>= uncurry (updateUnitPosition u)
 
 -- |Try moving a unit from a start to a destination zone.
 -- Returns the zone, from or to, where the unit can move to given its current state
-tryMovingUnit :: (BattleMap m t) => Unit -> Zone -> Zone -> m Zone
-tryMovingUnit u from to = get >>= \t -> return $ case movementCost u from to t of 
-                                                     Nothing -> from
-                                                     Just v  -> if movement (unitStrength u) >= v then to else from
-                 
+-- and the cost in MPs of this move (maybe 0).
+tryMovingUnit :: (BattleMap m t) => Unit -> Zone -> Zone -> m (Zone, Int)
+tryMovingUnit u from to = do t <- get 
+                             let cost = movementCost u from to t
+                             return $ case cost of 
+                               Nothing -> (from,0)
+                               Just v  -> if movement (unitStrength u) >= v then (to, v) else (from,0)
+                                                         
  
 -- |Gives the movement cost for a unit moving from given start zone
 -- to given target zone on given terrain. 

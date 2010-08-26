@@ -27,3 +27,11 @@ data Unit = Unit { unitName     :: Name,
                    unitHq       :: (Maybe Unit) }
           deriving (Eq, Show, Read)
 
+-- | Decrease the movement capacity of the unit by the 
+-- given amount
+unitMovesBy :: Unit -> Int -> Unit
+unitMovesBy (Unit n s st (UnitState o d m) t h) c =  
+  (Unit n s st (UnitState o d (m - 1)) t h) 
+  
+moveCapacity :: Unit -> Int
+moveCapacity (Unit n s st (UnitState o d m) t h) = m

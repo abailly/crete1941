@@ -1,9 +1,11 @@
 module PiecesTest where
 import Test.HUnit
+import Test.QuickCheck
 import MovementRules
 import Terrain.Simple
 import Control.Monad.State
 import qualified Data.Map as M
+import Control.Arrow
 
 should n = (n ~:) . TestList  
 for    n = (n ~:)
@@ -45,6 +47,13 @@ mpsForHQFromRethymnonIs target expected = movementCost germanHQ rethymnon target
 mpsForBritishHQFromRethymnonIs target expected = movementCost britishHQ rethymnon target terrain ~?= expected
 mpsForMechFromRethymnonIs target expected = movementCost germanHQ rethymnon target terrain ~?= expected
   
+unitManipulations = test [
+  "update data of unit" `should` [
+     "allow relative update of movement points" `for`
+     quickCheck (\ i -> moveCapacity (unitMovesBy germanHQ i) == moveCapacity germanHQ - i)
+     ]
+  ]
+                    
 movementRules = test [
   "cost of movement for units" `should` [
      beach           `mpsForHQFromRethymnonIs` Just 1,
@@ -76,10 +85,10 @@ movementRules = test [
     ],
   
   "moving unit to target zone" `should` [
-    "change unit's location in terrain if it has enough MPs" `for`
-    unitLocation "Campbell" (execState (move britishHQ "Beach") terrain)  ~?= "Beach",
+    "change unit's location in terrain if it has enough MPs and change its MPs" `for`
+    ((movement . unitStrength) *** unitLocation "Campbell") (runState (move britishHQ "Beach") terrain)  ~?= (7,"Beach"),
     "don't change unit's location in terrain it it has not enough MPs" `for`
-    unitLocation "arm1" (execState (move germanArm "Country") terrain)  ~?= "Rethymnon"
+    unitLocation "arm1"  (execState (move germanArm "Country") terrain)  ~?= "Rethymnon"
     ]
   ]
                 
