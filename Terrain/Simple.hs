@@ -22,7 +22,6 @@ instance Terrain Theater where
 instance BattleMap (S.State Theater) Theater where
   whereIs uname = S.get >>= (return . unitLocation uname)
   updateMovedUnit u z cost = do t <- S.get 
-                                let u' = unitMovesBy u cost
                                 S.put $ t { unitLocations = M.adjust (\ _ -> zoneName z) (unitName u) (unitLocations t), 
-                                            unitStatus    = M.adjust (\ _ -> u') (unitName u) (unitStatus t)}
-                                return u'
+                                            unitStatus    = M.adjust (\ _ -> u) (unitName u) (unitStatus t)}
+                                return u

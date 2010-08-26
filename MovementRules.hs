@@ -13,6 +13,18 @@ import Data.Graph.Inductive.Tree
 import Control.Applicative(Applicative, (<$>))
 import Control.Monad.State
 
+class Order o where
+  execute :: (BattleMap m t) => o -> m o
+  
+data Move = Move { movedUnit :: Unit,
+                   fromZone  :: Zone,
+                   toZone    :: Zone,
+                   costs     :: Int }
+            deriving (Eq, Show, Read)
+                     
+instance Order Move where
+  execute m@(Move u from to c) = updateMovedUnit u to c >> return m
+
 -- |Moves a unit to the given named zone.
 -- This function updates the terrain so that the unit's location
 -- will be its destination zone, iff the unit has enough movement 
@@ -23,17 +35,17 @@ move :: (BattleMap m t) => Unit -> Name -> m Unit
 move u dest = do terrain <- get
                  src <- whereIs (unitName u)
                  let [from,to] = map (zone terrain) [src, dest]
-                 tryMovingUnit u from to >>= uncurry (updateMovedUnit u)
+                 tryMovingUnit u from to >>= liftM movedUnit . execute
 
 -- |Try moving a unit from a start to a destination zone.
 -- Returns the zone, from or to, where the unit can move to given its current state
 -- and the cost in MPs of this move (maybe 0).
-tryMovingUnit :: (BattleMap m t) => Unit -> Zone -> Zone -> m (Zone, Int)
+tryMovingUnit :: (BattleMap m t) => Unit -> Zone -> Zone -> m Move
 tryMovingUnit u from to = do t <- get 
                              let cost = movementCost u from to t
                              return $ case cost of 
-                               Nothing -> (from,0)
-                               Just v  -> if movement (unitStrength u) >= v then (to, v) else (from,0)
+                               Nothing -> Move u from from 0
+                               Just v  -> if moveCapacity u >= v then Move (unitMovesBy u v) from to v else  Move u from from 0
                                                          
  
 -- |Gives the movement cost for a unit moving from given start zone

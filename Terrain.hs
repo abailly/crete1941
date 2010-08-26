@@ -1,5 +1,4 @@
 {-# LANGUAGE MultiParamTypeClasses, FunctionalDependencies #-}
-
 module Terrain where
 import Common
 import Units
