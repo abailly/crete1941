@@ -18,35 +18,33 @@ import Control.Monad.State
 -- will be its destination zone, iff the unit has enough movement 
 -- points to go to the location. As it updates some state, this function
 -- works inside a state monad and returns the arrival zone.
-move :: (Terrain t, BattleMap m t) => Unit -> Name -> m Zone
+move :: (BattleMap m t) => Unit -> Name -> m ()
 move u dest = do terrain <- get
                  src <- whereIs (unitName u)
                  let [from,to] = map (zone terrain) [src, dest]
-                 let res = if unitCanMoveTo terrain u from to  then to else from
-                 updateUnitPosition (unitName u) (zoneName res)
-                 return res
+                 tryMovingUnit u from to >>= updateUnitPosition u
 
--- |Select whether a unit can move to a given zone, given a terrain
--- and a starting zone.
-unitCanMoveTo :: (Terrain t) => t -> Unit -> Zone -> Zone -> Bool
-unitCanMoveTo terrain u from to = 
-  case movementCost terrain u from to  of
-    Nothing -> False
-    Just v  -> movement (unitStrength u) >= v 
+
+-- |Try moving a unit from a start to a destination zone.
+-- Returns the zone, from or to, where the unit can move to given its current state
+tryMovingUnit :: (BattleMap m t) => Unit -> Zone -> Zone -> m Zone
+tryMovingUnit u from to = get >>= \t -> return $ case movementCost u from to t of 
+                                                     Nothing -> from
+                                                     Just v  -> if movement (unitStrength u) >= v then to else from
                  
  
 -- |Gives the movement cost for a unit moving from given start zone
 -- to given target zone on given terrain. 
-movementCost :: (Applicative m, Monad m, Terrain t) => t -> Unit -> Zone -> Zone -> m Int
-movementCost t u@(Unit _ s _ _ _ _) z1 z2@(Zone _ o _ _ ) = (occupationFactor s o) <$> baseMovementCost t u z1 z2
+movementCost :: (Applicative m, Monad m, Terrain t) =>  Unit -> Zone -> Zone -> t -> m Int
+movementCost u@(Unit _ s _ _ _ _) z1 z2@(Zone _ o _ _ ) t = (occupationFactor s o) <$> baseMovementCost u z1 z2 t
   
 occupationFactor :: Side -> Control -> (Int -> Int)
 occupationFactor s (Occupied (Left s')) | s /= s' = (+1)
 occupationFactor _ (Occupied (Right ()))          = (+1)
 occupationFactor _ _                              = (+0)
 
-baseMovementCost :: (Monad m, Terrain t) => t -> Unit -> Zone -> Zone -> m Int
-baseMovementCost terrain unit z1@(Zone n1 _ _ _ ) z2@(Zone n2 _ ts _) 
+baseMovementCost :: (Monad m, Terrain t) => Unit -> Zone -> Zone -> t -> m Int
+baseMovementCost unit z1@(Zone n1 _ _ _ ) z2@(Zone n2 _ ts _) terrain 
   | not $ adjacent terrain n1 n2                       = fail "non adjacent target terrain"
   | Strategic `elem` ts                                = return 6
   | isConnectedByRoadTo terrain n1 n2                  = return 1

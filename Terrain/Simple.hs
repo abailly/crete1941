@@ -19,4 +19,4 @@ instance Terrain Theater where
 
 instance BattleMap (S.State Theater) Theater where
   whereIs uname = S.get >>= (return . unitLocation uname)
-  updateUnitPosition uname zname = S.get >>= \t -> S.put $ t { unitLocations = M.adjust (\ _ -> zname) uname (unitLocations t) }
+  updateUnitPosition u z = S.get >>= \t -> S.put $ t { unitLocations = M.adjust (\ _ -> zoneName z) (unitName u) (unitLocations t) }

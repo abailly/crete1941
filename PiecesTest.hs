@@ -41,9 +41,9 @@ britishControlled (Zone n _ t l) = Zone n (Occupied (Left British)) t l
 germanControlled (Zone n _ t l)  = Zone n (Occupied (Left German)) t l
 contested (Zone n _ t l)         = Zone n (Occupied (Right ())) t l
 
-mpsForHQFromRethymnonIs target expected = movementCost terrain germanHQ rethymnon target ~?= expected
-mpsForBritishHQFromRethymnonIs target expected = movementCost terrain britishHQ rethymnon target ~?= expected
-mpsForMechFromRethymnonIs target expected = movementCost terrain germanHQ rethymnon target ~?= expected
+mpsForHQFromRethymnonIs target expected = movementCost germanHQ rethymnon target terrain ~?= expected
+mpsForBritishHQFromRethymnonIs target expected = movementCost britishHQ rethymnon target terrain ~?= expected
+mpsForMechFromRethymnonIs target expected = movementCost germanHQ rethymnon target terrain ~?= expected
   
 movementRules = test [
   "cost of movement for units" `should` [

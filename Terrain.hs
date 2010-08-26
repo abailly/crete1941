@@ -22,7 +22,7 @@ class (Terrain t, MonadState t m) => BattleMap m t where
   -- | Gives the zone data associated with given name
   zoneDataFor  :: Name -> m Zone
   -- | Ensure unit's position is modified
-  updateUnitPosition :: Name -> Name -> m ()
+  updateUnitPosition :: Unit -> Zone -> m ()
   
   
 isConnectedByRoadTo :: (Terrain t) => t -> Name -> Name -> Bool
