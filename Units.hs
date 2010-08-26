@@ -31,7 +31,7 @@ data Unit = Unit { unitName     :: Name,
 -- given amount
 unitMovesBy :: Unit -> Int -> Unit
 unitMovesBy (Unit n s st (UnitState o d m) t h) c =  
-  (Unit n s st (UnitState o d (m - 1)) t h) 
+  (Unit n s st (UnitState o d (m - c)) t h) 
   
 moveCapacity :: Unit -> Int
 moveCapacity (Unit n s st (UnitState o d m) t h) = m

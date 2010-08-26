@@ -38,6 +38,9 @@ terrain     = Theater [("Rethymnon",[("Beach", True),
                            ("Beach", beach), 
                            ("CountryRoad",roadCountry),
                            ("Country",countryside)])
+              (M.fromList [("Campbell", britishHQ), 
+                           ("hq1", germanHQ),
+                           ("arm1", germanArm)]) 
 
 britishControlled (Zone n _ t l) = Zone n (Occupied (Left British)) t l
 germanControlled (Zone n _ t l)  = Zone n (Occupied (Left German)) t l
@@ -88,9 +91,8 @@ movementRules = test [
     "change unit's location in terrain if it has enough MPs and change its MPs" `for`
     ((movement . unitStrength) *** unitLocation "Campbell") (runState (move britishHQ "Beach") terrain)  ~?= (7,"Beach"),
     "don't change unit's location in terrain it it has not enough MPs" `for`
-    unitLocation "arm1"  (execState (move germanArm "Country") terrain)  ~?= "Rethymnon"
+    unitLocation "arm1"  (execState (move germanArm "Country") terrain)  ~?= "Rethymnon",
+    "store updated status of unit when it has moved" `for`
+    moveCapacity (unit "Campbell" $ execState (move britishHQ "Country") terrain)  ~?= 6
     ]
   ]
-                
-
-

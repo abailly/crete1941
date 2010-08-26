@@ -13,7 +13,10 @@ class Terrain t where
   unitLocation :: Name  -> t -> Name
   -- | Gives the zone data associated with given name
   zone  :: t -> Name -> Zone
+  -- | Gives the unit data associated with given name
+  unit  :: Name -> t -> Unit
   
+-- | A BattleMap stores the main information of the battle.
 class (Terrain t, MonadState t m) => BattleMap m t where 
   -- | Tell whether or not two zones identified by their name are connected or not
   areConnected  :: Name -> Name -> m (Maybe Bool)
@@ -23,7 +26,7 @@ class (Terrain t, MonadState t m) => BattleMap m t where
   zoneDataFor  :: Name -> m Zone
   -- | Ensure unit's position is modified and its current MPs are depleted 
   -- accordingly
-  updateUnitPosition :: Unit -> Zone -> Int -> m Unit
+  updateMovedUnit :: Unit -> Zone -> Int -> m Unit
   
   
 isConnectedByRoadTo :: (Terrain t) => t -> Name -> Name -> Bool

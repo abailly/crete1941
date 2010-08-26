@@ -23,7 +23,7 @@ move :: (BattleMap m t) => Unit -> Name -> m Unit
 move u dest = do terrain <- get
                  src <- whereIs (unitName u)
                  let [from,to] = map (zone terrain) [src, dest]
-                 tryMovingUnit u from to >>= uncurry (updateUnitPosition u)
+                 tryMovingUnit u from to >>= uncurry (updateMovedUnit u)
 
 -- |Try moving a unit from a start to a destination zone.
 -- Returns the zone, from or to, where the unit can move to given its current state
