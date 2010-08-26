@@ -23,7 +23,7 @@ data Move = Move { movedUnit :: Unit,
             deriving (Eq, Show, Read)
                      
 instance Order Move where
-  execute m@(Move u from to c) = updateMovedUnit u to c >> return m
+  execute m@(Move u from to c) = updateMovedUnit u to >> return m
 
 -- |Moves a unit to the given named zone.
 -- This function updates the terrain so that the unit's location
