@@ -7,50 +7,8 @@ import Control.Monad.State
 import qualified Data.Map as M
 import Control.Arrow
 import Control.Monad
-
-shouldBe n = (n ~:) . TestList  . map TestCase 
-should n = (n ~:) . TestList  
-for    n = (n ~:)
-with = map
-
-infixl 0 `for`
-infixl 0 `shouldBe`
-
-
-germanHQ    = Unit "hq1" German Full (UnitState 0 3 8)  DivisionHQ Nothing
-britishHQ    = Unit "Campbell" British Full (UnitState 0 3 8)  DivisionHQ Nothing
-germanArm   = Unit "arm1" German Full (UnitState 0 3 1)  Armoured Nothing
-rethymnon   = Zone "Rethymnon" Unoccupied [City,Port] Flat
-beach       = Zone "Beach" Unoccupied [Clear,Port,Beach] Flat
-roughWithRoad       = Zone "Rough" Unoccupied [Clear, Road] Rough
-roughNoRoad       = Zone "RoughNoRoad" Unoccupied [Clear] Rough
-countryside = Zone "Country" Unoccupied [Wood] Hilly
-roadCountry = Zone "CountryRoad" Unoccupied [Wood] Hilly
-mountain    = Zone "Mountain" Unoccupied [Wood] Mountain
-strategicZone    = Zone "A" Unoccupied [Strategic] Mountain
-nonAdjacentZone = Zone "Other" Unoccupied [Clear] Flat
-unitToLocations = [("Campbell", "Rethymnon"), 
-                   ("hq1", "Beach"),
-                   ("arm1", "Rethymnon")]
-terrain     = Theater [("Rethymnon",[("Beach", True),
-                                     ("Country", False),
-                                     ("Rough", False),
-                                     ("Country", False),
-                                     ("CountryRoad", True),
-                                     ("Mountain", False),
-                                     ("A", False)])]
-              (M.fromList unitToLocations) 
-              (M.fromList [("Rethymnon", rethymnon), 
-                           ("Beach", beach), 
-                           ("CountryRoad",roadCountry),
-                           ("Country",countryside)])
-              (M.fromList [("Campbell", britishHQ), 
-                           ("hq1", germanHQ),
-                           ("arm1", germanArm)]) 
-
-britishControlled (Zone n _ t l) = Zone n (Occupied (Left British)) t l
-germanControlled (Zone n _ t l)  = Zone n (Occupied (Left German)) t l
-contested (Zone n _ t l)         = Zone n (Occupied (Right ())) t l
+import TestUtilities
+import TestData
 
 mpsForHQFromRethymnonIs         target expected = movementCost germanHQ rethymnon target terrain @?= expected
 mpsForBritishHQFromRethymnonIs  target expected = movementCost britishHQ rethymnon target terrain @?= expected
@@ -97,10 +55,10 @@ movementRules = test [
   
   "moving unit to target zone" `should` [
     "change unit's location in terrain if it has enough MPs and change its MPs" `for`
-    ((movement . unitStrength) *** unitLocation "Campbell") (runState (move "Campbell" "Beach") terrain)  ~?= (7,"Beach"),
+    ((movement . unitStrength) *** unitLocation "Campbell") ((runState . runBattle) (move "Campbell" "Beach") terrain)  ~?= (7,"Beach"),
     "don't change unit's location in terrain it it has not enough MPs" `for`
-    unitLocation "arm1"  (execState (move "arm1" "Country") terrain)  ~?= "Rethymnon",
+    unitLocation "arm1"  ((execState  . runBattle) (move "arm1" "Country") terrain)  ~?= "Rethymnon",
     "store updated status of unit when it has moved" `for`
-    moveCapacity (unit "Campbell" $ execState (move "Campbell" "Country") terrain)  ~?= 6
+    moveCapacity (unit "Campbell" $ (execState . runBattle) (move "Campbell" "Country") terrain)  ~?= 6
     ]
   ]

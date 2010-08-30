@@ -19,7 +19,7 @@ instance Terrain Theater where
     zone t name = fromJust $ M.lookup name (zoneState t)
     unit n t = fromJust $ M.lookup n (unitStatus t) 
 
-instance BattleMap (S.State Theater) Theater where
+instance BattleMap Theater where
   whereIs uname = S.get >>= (return . unitLocation uname)
   updateMovedUnit u z = do t <- S.get 
                            S.put $ t { unitLocations = M.adjust (\ _ -> zoneName z) (unitName u) (unitLocations t), 

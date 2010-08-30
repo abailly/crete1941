@@ -1,9 +1,9 @@
-{-# LANGUAGE MultiParamTypeClasses, FunctionalDependencies #-}
+{-# LANGUAGE MultiParamTypeClasses, FunctionalDependencies, GeneralizedNewtypeDeriving #-}
 module Terrain where
 import Common
 import Units
 import qualified Data.Map as M
-import Control.Monad.State
+import qualified Control.Monad.State as C
 
 class Terrain t where
   -- | Tell whether or not two zones identified by their name are connected or not
@@ -16,17 +16,21 @@ class Terrain t where
   unit  :: Name -> t -> Unit
   
 -- | A BattleMap stores the main information of the battle.
-class (Terrain t, MonadState t m) => BattleMap m t where 
+class (Terrain t) => BattleMap t where 
   -- | Tell whether or not two zones identified by their name are connected or not
-  areConnected  :: Name -> Name -> m (Maybe Bool)
+  areConnected  :: Name -> Name -> Battle t (Maybe Bool)
   -- | Gives the current location of the given named unit within the terrain
-  whereIs :: Name -> m Name
+  whereIs :: Name -> Battle t Name
   -- | Gives the zone data associated with given name
-  zoneDataFor  :: Name -> m Zone
+  zoneDataFor  :: Name -> Battle t Zone
   -- | Ensure unit's position is modified.
-  updateMovedUnit :: Unit -> Zone -> m Unit
+  updateMovedUnit :: Unit -> Zone -> Battle t Unit
   
-  
+-- |Concrete type holding the state of the ongoing battle
+-- Implements state monad.
+newtype (BattleMap t) => Battle t a = Battle { runBattle :: C.State t a}
+                     deriving (Monad, C.MonadState t)
+                              
 isConnectedByRoadTo :: (Terrain t) => t -> Name -> Name -> Bool
 isConnectedByRoadTo t n1 n2 = connection t n1 n2 == Just True
 

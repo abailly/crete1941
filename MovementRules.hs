@@ -14,7 +14,7 @@ import Control.Applicative(Applicative, (<$>))
 import Control.Monad.State
 
 class Order o where
-  execute :: (BattleMap m t) => o -> m o
+  execute :: (BattleMap t) => o -> Battle t o
   
 data Move = Move { movedUnit :: Unit,
                    fromZone  :: Zone,
@@ -31,7 +31,7 @@ instance Order Move where
 -- points to go to the location. As it updates some state, this function
 -- works inside a state monad. It returns the unit (possibly modified if 
 -- some MPs were consumed).
-move :: (BattleMap m t) => Name -> Name -> m Unit
+move :: (BattleMap t) => Name -> Name -> Battle t Unit
 move uname dest = do terrain <- get
                      src <- whereIs uname
                      let [from,to] = map (zone terrain) [src, dest]
@@ -40,7 +40,7 @@ move uname dest = do terrain <- get
 -- |Try moving a unit from a start to a destination zone.
 -- Returns the zone, from or to, where the unit can move to given its current state
 -- and the cost in MPs of this move (maybe 0).
-tryMovingUnit :: (BattleMap m t) => Unit -> Zone -> Zone -> m Move
+tryMovingUnit :: (BattleMap t) => Unit -> Zone -> Zone -> Battle t Move
 tryMovingUnit u from to = do t <- get 
                              let cost = movementCost u from to t
                              return $ case cost of 
