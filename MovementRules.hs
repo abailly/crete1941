@@ -31,11 +31,11 @@ instance Order Move where
 -- points to go to the location. As it updates some state, this function
 -- works inside a state monad. It returns the unit (possibly modified if 
 -- some MPs were consumed).
-move :: (BattleMap m t) => Unit -> Name -> m Unit
-move u dest = do terrain <- get
-                 src <- whereIs (unitName u)
-                 let [from,to] = map (zone terrain) [src, dest]
-                 tryMovingUnit u from to >>= liftM movedUnit . execute
+move :: (BattleMap m t) => Name -> Name -> m Unit
+move uname dest = do terrain <- get
+                     src <- whereIs uname
+                     let [from,to] = map (zone terrain) [src, dest]
+                     tryMovingUnit (unit uname terrain) from to >>= liftM movedUnit . execute
 
 -- |Try moving a unit from a start to a destination zone.
 -- Returns the zone, from or to, where the unit can move to given its current state
