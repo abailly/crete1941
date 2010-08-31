@@ -18,6 +18,7 @@ instance Terrain Theater where
     unitLocation n t = fromJust $ M.lookup n (unitLocations t) 
     zone t name = fromJust $ M.lookup name (zoneState t)
     unit n t = fromJust $ M.lookup n (unitStatus t) 
+    allUnitLocations = M.assocs . unitLocations
 
 instance BattleMap Theater where
   whereIs uname = S.get >>= (return . unitLocation uname)

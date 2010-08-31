@@ -14,6 +14,8 @@ class Terrain t where
   zone  :: t -> Name -> Zone
   -- | Gives the unit data associated with given name
   unit  :: Name -> t -> Unit
+  -- | Give the location of all the units
+  allUnitLocations :: t -> [(Name,Name)]
   
 -- | A BattleMap stores the main information of the battle.
 class (Terrain t) => BattleMap t where 

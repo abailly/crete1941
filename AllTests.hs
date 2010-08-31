@@ -1,12 +1,14 @@
 module Main where
 import PiecesTest
+import CliTest
 import IO(stderr)
 import Test.HUnit
 import System.Exit
 import System.IO
 
 tests = test [unitManipulations,
-              movementRules]
+              movementRules,
+              commandsHandling]
 
 main = do counts <- runTest tests
           case (errors counts + failures counts) of
