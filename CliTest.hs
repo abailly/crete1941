@@ -23,13 +23,11 @@ instance CommandIO (S.State ([Command],[CommandResult])) where
                       S.put (cs, r:rs)
                       return ()
                       
-checkCommandResultFor cmd res = (S.execState ((S.evalStateT . runCommands) interpret terrain)) ([cmd],[]) ~?= ([],[res])
+commandResultIs cmd res = (S.execState ((S.evalStateT . runCommands) interpret terrain)) ([cmd],[]) ~?= ([],[res])
 
 commandsHandling = test [
    "commands interpreter" `should` [
-      ("display (unit,zone) couples as unit locations" `for`
-       checkCommandResultFor GetUnitLocations (UnitLocations $ sort unitToLocations)),
-      ("display (unit,state) couples as unit status" `for`
-       checkCommandResultFor GetUnitStatus (UnitStatus $ unitToStatus))
+       GetUnitLocations `commandResultIs` (UnitLocations $ sort unitToLocations),
+       GetUnitStatus    `commandResultIs` (UnitStatus $ unitToStatus)
       ]
    ]
