@@ -19,6 +19,13 @@ nonAdjacentZone = Zone "Other" Unoccupied [Clear] Flat
 unitToLocations = [("Campbell", "Rethymnon"), 
                    ("hq1", "Beach"),
                    ("arm1", "Rethymnon")]
+unitToStatus      = [("Campbell", britishHQ),
+                     ("arm1", germanArm), 
+                     ("hq1", germanHQ)]
+zoneToStatus      = [("Rethymnon", rethymnon), 
+                   ("Beach", beach), 
+                   ("CountryRoad",roadCountry),
+                   ("Country",countryside)]
 terrain     = Theater [("Rethymnon",[("Beach", True),
                                      ("Country", False),
                                      ("Rough", False),
@@ -27,13 +34,8 @@ terrain     = Theater [("Rethymnon",[("Beach", True),
                                      ("Mountain", False),
                                      ("A", False)])]
               (M.fromList unitToLocations) 
-              (M.fromList [("Rethymnon", rethymnon), 
-                           ("Beach", beach), 
-                           ("CountryRoad",roadCountry),
-                           ("Country",countryside)])
-              (M.fromList [("Campbell", britishHQ), 
-                           ("hq1", germanHQ),
-                           ("arm1", germanArm)]) 
+              (M.fromList zoneToStatus)
+              (M.fromList unitToStatus) 
 
 britishControlled (Zone n _ t l) = Zone n (Occupied (Left British)) t l
 germanControlled (Zone n _ t l)  = Zone n (Occupied (Left German)) t l

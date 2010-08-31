@@ -1,3 +1,4 @@
+
 {-# LANGUAGE MultiParamTypeClasses, FunctionalDependencies, GeneralizedNewtypeDeriving #-}
 module Terrain where
 import Common
@@ -16,6 +17,8 @@ class Terrain t where
   unit  :: Name -> t -> Unit
   -- | Give the location of all the units
   allUnitLocations :: t -> [(Name,Name)]
+  -- | Give the status of all the units
+  allUnitStatus :: t -> [(Name,Unit)]
   
 -- | A BattleMap stores the main information of the battle.
 class (Terrain t) => BattleMap t where 

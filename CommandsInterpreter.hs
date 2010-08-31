@@ -7,9 +7,11 @@ import Control.Monad.State
 
 
 data Command = GetUnitLocations 
+             | GetUnitStatus
               deriving (Eq, Show, Read)
                        
 data CommandResult = UnitLocations [(Name,Name)]
+                   | UnitStatus [(Name,Unit)]
               deriving (Eq, Show, Read)
 
 -- |Low-level I/O routines for command interaction
@@ -44,3 +46,4 @@ interpret = do c <- lift readCommand
                
 executeCommand ::  (CommandIO io,BattleMap t) => Command -> Commands t io CommandResult
 executeCommand GetUnitLocations = get >>= return . UnitLocations . allUnitLocations
+executeCommand GetUnitStatus    = get >>= return . UnitStatus . allUnitStatus

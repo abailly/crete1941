@@ -35,3 +35,7 @@ unitMovesBy (Unit n s st (UnitState o d m) t h) c =
   
 moveCapacity :: Unit -> Int
 moveCapacity (Unit n s st (UnitState o d m) t h) = m
+
+-- |Compare unit by their names
+compareUnitsBy :: (Ord a) => (Unit -> a) -> Unit -> Unit -> Ordering
+compareUnitsBy f u1 u2 = compare (f u1) (f u2)
