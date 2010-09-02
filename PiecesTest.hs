@@ -12,7 +12,7 @@ import TestData
 
 mpsForHQFromRethymnonIs         target expected = movementCost germanHQ rethymnon target terrain @?= expected
 mpsForBritishHQFromRethymnonIs  target expected = movementCost britishHQ rethymnon target terrain @?= expected
-mpsForMechFromRethymnonIs       target expected = movementCost germanHQ rethymnon target terrain @?= expected
+mpsForMechFromRethymnonIs       target expected = movementCost germanArm rethymnon target terrain @?= expected
 matchingLocationForUnitInTerrain (name, zone) = unitLocation name terrain  @?= zone  
 
 unitManipulations = test [
@@ -42,16 +42,13 @@ movementRules = test [
     contested mountain `mpsForBritishHQFromRethymnonIs` Just 5
     ],
   
-  "cost of movement for mechanized units" `shouldBe` 
-  uncurry mpsForMechFromRethymnonIs `with`
+  "cost of movement for mechanized units" `shouldBe`  uncurry mpsForMechFromRethymnonIs `with`
   [
     (roughWithRoad,Just 1),
     (roughNoRoad,Nothing)
   ],
   
-  "unit initial location" `shouldBe` 
-  matchingLocationForUnitInTerrain `with` 
-  unitToLocations,
+  "unit initial location" `shouldBe` matchingLocationForUnitInTerrain `with` unitToLocations,
   
   "moving unit to target zone" `should` [
     "change unit's location in terrain if it has enough MPs and change its MPs" `for`

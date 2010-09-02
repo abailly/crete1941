@@ -4,7 +4,9 @@ module MovementRules(module Common,
                      module Units, 
                      module Terrain,
                      movementCost,
-                     move) where
+                     move,
+                     prepareMove,
+                     Move(..)) where
 import Common
 import Units
 import Terrain
@@ -32,11 +34,20 @@ instance Order Move where
 -- works inside a state monad. It returns the unit (possibly modified if 
 -- some MPs were consumed).
 move :: (BattleMap t) => Name -> Name -> Battle t Unit
-move uname dest = do terrain <- get
-                     src <- whereIs uname
-                     let [from,to] = map (zone terrain) [src, dest]
-                     tryMovingUnit (unit uname terrain) from to >>= liftM movedUnit . execute
+move uname dest = prepareMove uname dest >>= liftM movedUnit . execute
 
+
+-- | Prepare movement of a unit.
+-- This function does not change the state of the unit or the terrain.
+prepareMove :: (BattleMap t) => 
+               Name                -- ^Name of the unit to move
+               -> Name             -- ^Name of destination zone
+               -> Battle t Move    -- ^Computed Move order that may be executed later on.
+prepareMove uname dest = do terrain <- get
+                            src <- whereIs uname
+                            let [from,to] = map (zone terrain) [src, dest]
+                            tryMovingUnit (unit uname terrain) from to 
+                            
 -- |Try moving a unit from a start to a destination zone.
 -- Returns the zone, from or to, where the unit can move to given its current state
 -- and the cost in MPs of this move (maybe 0).

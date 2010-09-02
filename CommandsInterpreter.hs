@@ -4,14 +4,18 @@ import MovementRules
 import Terrain
 import Control.Monad
 import Control.Monad.State
+import Debug.Trace
 
 
 data Command = GetUnitLocations 
              | GetUnitStatus
+             | MoveUnit Name Name
               deriving (Eq, Show, Read)
                        
 data CommandResult = UnitLocations [(Name,Name)]
                    | UnitStatus [(Name,Unit)]
+                   | UnitMoved Name Name
+                   | MoveProhibited Name Name
               deriving (Eq, Show, Read)
 
 -- |Low-level I/O routines for command interaction
@@ -47,3 +51,10 @@ interpret = do c <- lift readCommand
 executeCommand ::  (CommandIO io,BattleMap t) => Command -> Commands t io CommandResult
 executeCommand GetUnitLocations = get >>= return . UnitLocations . allUnitLocations
 executeCommand GetUnitStatus    = get >>= return . UnitStatus . allUnitStatus
+executeCommand (MoveUnit un zn) = do t <- get
+                                     let m = (evalState . runBattle) (prepareMove un zn) t
+                                     return $ if (zoneName . toZone) m == zn then
+                                                UnitMoved un zn
+                                              else
+                                                MoveProhibited un zn
+                                                

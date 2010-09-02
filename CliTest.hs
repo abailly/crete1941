@@ -27,7 +27,9 @@ commandResultIs cmd res = (S.execState ((S.evalStateT . runCommands) interpret t
 
 commandsHandling = test [
    "commands interpreter" `should` [
-       GetUnitLocations `commandResultIs` (UnitLocations $ sort unitToLocations),
-       GetUnitStatus    `commandResultIs` (UnitStatus $ unitToStatus)
+       GetUnitLocations                `commandResultIs` (UnitLocations $ sort unitToLocations),
+       GetUnitStatus                   `commandResultIs` (UnitStatus $ unitToStatus),
+       (MoveUnit "arm1" "Beach")       `commandResultIs` (UnitMoved "arm1" "Beach"),
+       (MoveUnit "arm1" "Country") `commandResultIs` (MoveProhibited "arm1" "Country")
       ]
    ]
