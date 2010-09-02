@@ -33,8 +33,8 @@ instance Order Move where
 -- points to go to the location. As it updates some state, this function
 -- works inside a state monad. It returns the unit (possibly modified if 
 -- some MPs were consumed).
-move :: (BattleMap t) => Name -> Name -> Battle t Unit
-move uname dest = prepareMove uname dest >>= liftM movedUnit . execute
+move :: (BattleMap t) => Name -> Name -> Battle t Move
+move uname dest = prepareMove uname dest >>= execute
 
 
 -- | Prepare movement of a unit.

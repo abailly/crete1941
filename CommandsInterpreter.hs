@@ -38,7 +38,7 @@ instance (BattleMap t) => MonadTrans (Commands t) where
 liftCommands :: (BattleMap t, Monad m) => m a -> Commands t m a
 liftCommands m  = Commands $ StateT (\ st ->                -- This starts the function for state transformation
                                       (m >>=                -- here we are in the inner monad context, so we sequence the computation with ... 
-                                       \ x -> return (x,st) -- a computation that packages in the inner monad the result of computation with state
+                                       \ x -> return (x,st) -- ... a computation that packages in the inner monad the result of computation with state
                                       )
                                     )
 
@@ -52,7 +52,8 @@ executeCommand ::  (CommandIO io,BattleMap t) => Command -> Commands t io Comman
 executeCommand GetUnitLocations = get >>= return . UnitLocations . allUnitLocations
 executeCommand GetUnitStatus    = get >>= return . UnitStatus . allUnitStatus
 executeCommand (MoveUnit un zn) = do t <- get
-                                     let m = (evalState . runBattle) (prepareMove un zn) t
+                                     let (m,t') = (runState . runBattle) (move un zn) t
+                                     put t'
                                      return $ if (zoneName . toZone) m == zn then
                                                 UnitMoved un zn
                                               else

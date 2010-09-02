@@ -4,6 +4,7 @@ module CliTest where
 import MovementRules
 import Terrain.Simple
 import CommandsInterpreter
+import Commands.IO
 import qualified Control.Monad.State as S
 import Control.Monad.Reader
 import Test.HUnit
@@ -23,13 +24,20 @@ instance CommandIO (S.State ([Command],[CommandResult])) where
                       S.put (cs, r:rs)
                       return ()
                       
-commandResultIs cmd res = (S.execState ((S.evalStateT . runCommands) interpret terrain)) ([cmd],[]) ~?= ([],[res])
+interpretOneCommandWith f cmd= (S.execState ((f . runCommands) interpret terrain)) cmd
 
+commandResultIs cmd res = interpretOneCommandWith S.evalStateT ([cmd],[])  ~?= ([],[res])
+ 
 commandsHandling = test [
    "commands interpreter" `should` [
        GetUnitLocations                `commandResultIs` (UnitLocations $ sort unitToLocations),
        GetUnitStatus                   `commandResultIs` (UnitStatus $ unitToStatus),
        (MoveUnit "arm1" "Beach")       `commandResultIs` (UnitMoved "arm1" "Beach"),
-       (MoveUnit "arm1" "Country") `commandResultIs` (MoveProhibited "arm1" "Country")
+       (MoveUnit "arm1" "Country")     `commandResultIs` (MoveProhibited "arm1" "Country")
       ]
+   ,
+   "command execution" `should` [
+     "change terrain when moving unit" `for`
+     ((S.execStateT.runCommands) (executeCommand (MoveUnit "Campbell" "Beach")) terrain) >>= (assertEqual "Unexpected location" "Beach" . unitLocation "Campbell")     
+     ]
    ]

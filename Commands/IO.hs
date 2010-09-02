@@ -3,6 +3,13 @@ import CommandsInterpreter
 import Text.ParserCombinators.ReadP
 import Data.Char(isSpace)
 
+
+instance CommandIO IO where
+  readCommand = do input <- getLine 
+                   return $ decode input
+  writeResult r = putStrLn $ show r
+    
+
 commandsMap = [("getunitlocations",GetUnitLocations),
                ("getunitstatus",GetUnitStatus)
               ]
