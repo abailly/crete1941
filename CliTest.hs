@@ -37,6 +37,7 @@ commandsHandling = test [
        GetUnitStatus                   `commandResultIs` (UnitStatus $ unitToStatus),
        (MoveUnit "arm1" "Beach")       `commandResultIs` (UnitMoved "arm1" "Beach"),
        (MoveUnit "arm1" "Country")     `commandResultIs` (MoveProhibited "arm1" "Country"),
+       CommandError "error"            `commandResultIs` (ErrorInCommands "unknown command: error"),
        Exit                            `commandResultIs` Bye
       ]
    ,

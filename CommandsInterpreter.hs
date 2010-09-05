@@ -18,6 +18,7 @@ data CommandResult = UnitLocations [(Name,Name)]
                    | UnitStatus [(Name,Unit)]
                    | UnitMoved Name Name
                    | MoveProhibited Name Name
+                   | ErrorInCommands String
                    | Bye
               deriving (Eq, Show, Read)
 
@@ -58,6 +59,7 @@ interpret = do c <- lift readCommand
 executeCommand ::  (CommandIO io,BattleMap t) => Command -> Commands t io CommandResult
 executeCommand GetUnitLocations = get >>= return . UnitLocations . allUnitLocations
 executeCommand GetUnitStatus    = get >>= return . UnitStatus . allUnitStatus
+executeCommand (CommandError s) = return $ ErrorInCommands ("unknown command: " ++ s)
 executeCommand Exit             = return Bye
 executeCommand (MoveUnit un zn) = do t <- get
                                      let (m,t') = (runState . runBattle) (move un zn) t
