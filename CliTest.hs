@@ -23,6 +23,9 @@ instance CommandIO (S.State ([Command],[CommandResult])) where
    writeResult r = do (cs,rs) <- S.get
                       S.put (cs, r:rs)
                       return ()
+   doExit        = do (cs,rs) <- S.get
+                      S.put (cs, rs)
+                      return ()
                       
 interpretOneCommandWith f cmd= (S.execState ((f . runCommands) interpret terrain)) cmd
 
@@ -33,7 +36,8 @@ commandsHandling = test [
        GetUnitLocations                `commandResultIs` (UnitLocations $ sort unitToLocations),
        GetUnitStatus                   `commandResultIs` (UnitStatus $ unitToStatus),
        (MoveUnit "arm1" "Beach")       `commandResultIs` (UnitMoved "arm1" "Beach"),
-       (MoveUnit "arm1" "Country")     `commandResultIs` (MoveProhibited "arm1" "Country")
+       (MoveUnit "arm1" "Country")     `commandResultIs` (MoveProhibited "arm1" "Country"),
+       Exit                            `commandResultIs` Bye
       ]
    ,
    "command execution" `should` [

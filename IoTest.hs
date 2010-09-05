@@ -15,9 +15,11 @@ decodeCommandsFromStrings = test [
   "commands decoding" `shouldBe` 
   readSimpleCommandsFromStrings `with` 
   [
-    ("GetUnitLocations", GetUnitLocations),
-    ("GetUnitStatus", GetUnitStatus),
-    ("getunitStatus", GetUnitStatus),
-    ("move arm1 rethymnon", MoveUnit "arm1" "rethymnon")
+    ("GetUnitLocations", Right GetUnitLocations),
+    ("GetUnitStatus", Right GetUnitStatus),
+    ("getunitStatus", Right GetUnitStatus),
+    ("move arm1 rethymnon", Right $MoveUnit "arm1" "rethymnon"),
+    ("exit", Right Exit),
+    ("unknown command", Left "unknown command")
   ]
   ]

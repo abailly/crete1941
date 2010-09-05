@@ -53,7 +53,7 @@ movementRules = test [
   "moving unit to target zone" `should` [
     "change unit's location in terrain if it has enough MPs and change its MPs" `for`
     ((movement . unitStrength . movedUnit) *** unitLocation "Campbell") ((runState . runBattle) (move "Campbell" "Beach") terrain)  ~?= (7,"Beach"),
-    "don't change unit's location in terrain it it has not enough MPs" `for`
+    "don't change unit's location in terrain it it cannot move to target" `for`
     unitLocation "arm1"  ((execState  . runBattle) (move "arm1" "Country") terrain)  ~?= "Rethymnon",
     "store updated status of unit when it has moved" `for`
     moveCapacity (unit "Campbell" $ (execState . runBattle) (move "Campbell" "Country") terrain)  ~?= 6
