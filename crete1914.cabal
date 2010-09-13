@@ -1,0 +1,13 @@
+Name:           Crete1941
+Version:        0.1
+Cabal-Version:  >= 1.2
+License:        BSD3
+Author:         Arnaud Bailly
+Synopsis:       A computerized version of Crete 1941, a wargame published in Vae Victis in 1998
+Build-Type:     Simple
+Homepage:	http://www.oqube.com/projects/crete1941
+
+Executable Crete1941
+  Build-Depends:  haskell98, containers >= 0.3, base > 4, fgl > 5.4, mtl >= 1.1, network > 2.2, process > 1.0, HUnit > 1.2, QuickCheck > 2.1, bytestring > 0.9, utf8-string >= 0.3.6
+  Main-Is:        Crete1941.hs
+  Hs-Source-Dirs: .

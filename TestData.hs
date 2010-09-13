@@ -6,6 +6,7 @@ import qualified Data.Map as M
 
 germanHQ    = Unit "hq1" German Full (UnitState 0 3 8)  DivisionHQ Nothing
 britishHQ    = Unit "Campbell" British Full (UnitState 0 3 8)  DivisionHQ Nothing
+britishInf    = Unit "Campbell" British Full (UnitState 0 3 0)  Infantry (Just britishHQ)
 germanArm   = Unit "arm1" German Full (UnitState 0 3 1)  Armoured Nothing
 rethymnon   = Zone "Rethymnon" Unoccupied [City,Port] Flat
 beach       = Zone "Beach" Unoccupied [Clear,Port,Beach] Flat
@@ -18,10 +19,12 @@ strategicZone    = Zone "A" Unoccupied [Strategic] Mountain
 nonAdjacentZone = Zone "Other" Unoccupied [Clear] Flat
 unitToLocations = [("Campbell", "Rethymnon"), 
                    ("hq1", "Beach"),
-                   ("arm1", "Rethymnon")]
+                   ("arm1", "Rethymnon"),
+                   ("inf1", "Rethymnon")]
 unitToStatus      = [("Campbell", britishHQ),
                      ("arm1", germanArm), 
-                     ("hq1", germanHQ)]
+                     ("hq1", germanHQ),
+                     ("inf1",britishInf)]
 zoneToStatus      = [("Rethymnon", rethymnon), 
                    ("Beach", beach), 
                    ("CountryRoad",roadCountry),

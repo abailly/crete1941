@@ -14,8 +14,7 @@ instance CommandIO IO where
                      Left  m -> return $ CommandError m
   writeResult r = putStrLn $ show r
   writeMessage m = putStrLn $ m
-  doExit         = do putStrLn $ "Exiting"
-                      exitWith ExitSuccess
+  doExit         = exitWith ExitSuccess
 
 commandsMap = [("getunitlocations",GetUnitLocations),
                ("getunitstatus",GetUnitStatus)

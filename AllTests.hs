@@ -1,4 +1,4 @@
-module Main where
+module AllTests where
 import PiecesTest
 import CliTest
 import IoTest
@@ -6,17 +6,31 @@ import IO(stderr)
 import Test.HUnit
 import System.Exit
 import System.IO
+import Data.List
 
-tests = test [unitManipulations,
-              movementRules,
-              commandsHandling,
-              decodeCommandsFromStrings
-             ]
+newtype Tests = T {unT :: Test}
 
-main = do counts <- runTest tests
-          case (errors counts + failures counts) of
-            0 -> exitWith ExitSuccess
-            n -> exitWith (ExitFailure n)
+data TestCount = TestCount Int Test
+
+tests = T $ test [unitManipulations,
+                  movementRules,
+                  commandsHandling,
+                  decodeCommandsFromStrings
+                 ]
+
+runAllTests = do putStrLn "Running test suite: "
+                 putStrLn (show tests)
+                 counts <- runTest (unT tests)
+                 case (errors counts + failures counts) of
+                   0 -> return ExitSuccess
+                   n -> return (ExitFailure n)
+
+instance Show Tests where
+  show t = show' "" t
+  
+show'  indent (T (TestCase _))    = ""
+show'  indent (T (TestList ts))   = concat $ (map (show' (' ':indent) . T) ts)
+show'  indent (T (TestLabel l t)) = indent ++ l ++ ":\n" ++ (show' indent (T t))
 
 runTest :: Test -> IO Counts
 runTest  t = do (counts, _) <- runTestText (putTextToHandle stderr False) t
