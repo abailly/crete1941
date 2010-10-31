@@ -12,9 +12,10 @@ instance CommandIO IO where
                    case decode input of 
                      Right c -> return c
                      Left  m -> return $ CommandError m
-  writeResult r = putStrLn $ show r
-  writeMessage m = putStrLn $ m
-  doExit         = exitWith ExitSuccess
+  writeResult (Msg str) = putStrLn $ (unlines str)
+  writeResult r         = putStrLn $ show r
+  writeMessage m        = putStrLn $ m
+  doExit                = exitWith ExitSuccess
 
 commandsMap = [("getunitlocations",GetUnitLocations),
                ("getunitstatus",GetUnitStatus)
@@ -28,8 +29,10 @@ decode s | [x] <- parse = Right x
 parseCommand = do (getUnitLocationsParser +++ 
                    getUnitStatusParser    +++ 
                    moveCommandParser      +++
+                   helpParser             +++
                    exitParser)
             where
+              helpParser             = string "help" +++ string "Help" >> return Help
               exitParser             = string "exit" +++ string "Exit" >> return Exit
               getUnitLocationsParser = string "GetUnitLocations" +++ string "getunitlocations" >> return GetUnitLocations
               getUnitStatusParser    = string "getunitStatus" +++ string "GetUnitStatus" >> return GetUnitStatus

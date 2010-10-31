@@ -1,4 +1,3 @@
-
 {-# LANGUAGE MultiParamTypeClasses, FunctionalDependencies, GeneralizedNewtypeDeriving #-}
 module Terrain where
 import Common
@@ -7,7 +6,10 @@ import qualified Data.Map as M
 import qualified Control.Monad.State as C
 
 class Terrain t where
-  -- | Tell whether or not two zones identified by their name are connected or not
+  -- | Tell whether or not two zones identified by their name are connected
+  -- and if true whether or not this connection is done by road.
+  -- @return Nothing if the two zones are not connected, Just False if they are connected,
+  -- Just True if they are connected by road.
   connection  :: t -> Name -> Name -> Maybe Bool
   -- | Gives the current location of the given named unit within the terrain
   unitLocation :: Name  -> t -> Name

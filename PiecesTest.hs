@@ -34,7 +34,7 @@ movementRules = test [
     (roadCountry     , Just 1),
     (nonAdjacentZone , Nothing)
   ],
-  
+    
   "cost of movement to controlled & contested zones" `shouldBe` [
     britishControlled roughWithRoad `mpsForHQFromRethymnonIs` Just 2,
     contested mountain `mpsForHQFromRethymnonIs` Just 5,

@@ -2,6 +2,7 @@ module AllTests where
 import PiecesTest
 import CliTest
 import IoTest
+import ServerTest
 import IO(stderr)
 import Test.HUnit
 import System.Exit
@@ -15,7 +16,8 @@ data TestCount = TestCount Int Test
 tests = T $ test [unitManipulations,
                   movementRules,
                   commandsHandling,
-                  decodeCommandsFromStrings
+                  decodeCommandsFromStrings,
+                  interactThroughAnHttpServer
                  ]
 
 runAllTests = do putStrLn "Running test suite: "

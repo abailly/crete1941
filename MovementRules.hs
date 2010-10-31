@@ -75,9 +75,9 @@ baseMovementCost unit z1@(Zone n1 _ _ _ ) z2@(Zone n2 _ ts _) terrain
   | Strategic `elem` ts                                = return 6
   | isConnectedByRoadTo terrain n1 n2                  = return 1
   | unitType unit == Armoured && not (Road `elem` ts)  = fail "armoured unit moving into non road zone"
-  | otherwise                                          = movementCost' z2
+  | otherwise                                          = return $ movementCost' z2
 
-movementCost' (Zone _ _ ts Flat)     = return 1
-movementCost' (Zone _ _ ts Rough)    = return 1
-movementCost' (Zone _ _ ts Hilly)    = return 2
-movementCost' (Zone _ _ ts Mountain) = return 4
+movementCost' (Zone _ _ ts Flat)     = 1
+movementCost' (Zone _ _ ts Rough)    = 1
+movementCost' (Zone _ _ ts Hilly)    = 2
+movementCost' (Zone _ _ ts Mountain) = 4
