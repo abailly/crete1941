@@ -14,11 +14,8 @@ import Control.Concurrent
 
 main = do args <- getArgs
           case args of
-            ["test"]   -> runAllTests
-            ["server"] -> do mvar <- newEmptyMVar 
-                             startServer terrain 4567  mvar
-                             takeMVar mvar
-                             return $ ExitSuccess
+            ["test"]   -> runAllTests 
+            ["server"] -> return ExitSuccess
             _          -> interpreterLoop terrain
 
 interpreterLoop t =  (execStateT.runCommands) interpret t >>= interpreterLoop

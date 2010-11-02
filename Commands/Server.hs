@@ -6,11 +6,11 @@ import Prelude hiding (null)
 import Data.ByteString.UTF8 (fromString,toString)
 import Data.ByteString(hPutStrLn,hGet,hGetLine,null)
 import System.IO(Handle, hSetBuffering,
-                 hFlush,IOMode(..),BufferMode(..),hClose)
+                 hFlush,IOMode(..),BufferMode(..),hClose,hIsClosed)
 import Control.Applicative
 import Control.Exception(finally)
 import Network.Socket
-import Control.Concurrent(forkIO,ThreadId,putMVar,MVar)
+import Control.Concurrent(forkIO,myThreadId, ThreadId,putMVar,MVar)
 import Network.BSD
 import Control.Monad
 import Control.Monad.Reader
@@ -39,35 +39,42 @@ instance CommandIO (CommandHandleIO) where
        globToEmptyLine r l | l == (fromString "\r") = return ()
                            | otherwise              = hGetLine r >>= globToEmptyLine r 
 
-   writeResult (Msg str) = ask >>= (liftIO . flip hPutStrLn (fromString $ unlines str))
-   writeResult r         = ask >>= (liftIO . flip hPutStrLn (fromString $ show r))
-   writeMessage msg      = ask >>= (liftIO . flip hPutStrLn (fromString msg))
+   writeResult (Msg str) = ask >>= (httpReply $ unlines str)
+   writeResult r         = ask >>= (httpReply $ show r)
+   writeMessage msg      = ask >>= (httpReply msg)
    doExit                = ask >>= liftIO . hClose
-       
+                           
+httpReply out = liftIO . flip hPutStrLn 
+                (fromString $ 
+                "HTTP/1.1 200 OK\r\n" ++ 
+                "Content-Length: "++ (show $ length out) ++ "\r\n" ++ 
+                "Content-Type: text/plain\r\n" ++ "\r\n" ++ out)
+                
 startServer :: (BattleMap t) => t -> Int -> MVar () -> IO ThreadId
 startServer terrain port mvar = 
   do putStrLn $ "starting server on "  ++ (show port) 
-     forkIO ((doServe terrain port) `finally` (putStrLn "stopping server" >> putMVar mvar ()))
+     forkIO ((startListening terrain port) `finally` (putStrLn "stopping server" >> putMVar mvar ()))
   
-doServe terrain port =
-  do putStrLn "do start server"
-     address <- inet_addr "127.0.0.1"
+startListening terrain port =
+  do address <- inet_addr "127.0.0.1"
      sock <- socket AF_INET Stream defaultProtocol
      let addr = SockAddrInet ((fromIntegral port) :: PortNumber) address
      bindSocket sock addr
      listen sock 5
-     putStrLn $ "listening " ++ show sock
+     putStrLn $ "listening on " ++ show sock
      loopOn terrain sock
      
 loopOn terrain sock = 
   do (client, clientAddress) <- accept sock
      putStrLn $ "connecting " ++ show client
-     forkIO (commandsLoop client terrain `finally` sClose client)
+     forkIO (commandsLoop client terrain)
      loopOn terrain sock
 
 commandsLoop sock t = do hdl <- socketToHandle sock ReadWriteMode 
                          hSetBuffering hdl (LineBuffering)
---                       req <- hGetLine hdl
---                       putStrLn (toString req)
-                         ((runReaderT.runHandle) ((execStateT.runCommands) interpret t) hdl) >>= commandsLoop sock
-
+                         doInterpret hdl t
+                           where
+                             doInterpret hdl t = ((runReaderT.runHandle) ((execStateT.runCommands) interpret t) hdl) >>= 
+                                                 (\t -> do isClosed <- hIsClosed hdl 
+                                                           if isClosed then return () else doInterpret hdl t)
+                      

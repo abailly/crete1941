@@ -11,10 +11,12 @@ import Text.Regex
 import Network.HTTP
 import Network.URI
 import Data.Maybe      
-import Control.Concurrent(killThread,newEmptyMVar)
+import Control.Concurrent(killThread,newEmptyMVar,putMVar)
+
 -- From http://book.realworldhaskell.org/read/extended-example-web-client-programming.html      
 simpleHttpContent url =
-    do resp <- simpleHTTP request
+    do putStrLn ("connecting to " ++ url)
+       resp <- simpleHTTP request
        case resp of
          Left x -> return $ ("Error connecting: " ++ show x)
          Right r -> 
@@ -31,12 +33,12 @@ simpleHttpContent url =
                              rqBody = ""}
           uri = fromJust $ parseURI url
 
-matchReplyContentToRESTCommandsFor t (pat,contentMatch) = do mvar <- newEmptyMVar 
-                                                             tid <- startServer t (fromIntegral serverPort) mvar
+matchReplyContentToRESTCommandsFor t (pat,contentMatch) = do mvar <- newEmptyMVar
+                                                             startServer terrain (fromIntegral serverPort)  mvar          
                                                              output <- simpleHttpContent ("http://127.0.0.1:" ++ show serverPort ++ pat)
+                                                             simpleHttpContent ("http://127.0.0.1:" ++ show serverPort ++ "/Exit")
                                                              output @?= contentMatch
-                                                             killThread tid
-                                                             
+                                                             putMVar mvar () 
   
 interactThroughAnHttpServer = 
   "interacting with Crete 1941 through a REST API"  `shouldBe`

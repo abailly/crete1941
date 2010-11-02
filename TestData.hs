@@ -44,4 +44,4 @@ britishControlled (Zone n _ t l) = Zone n (Occupied (Left British)) t l
 germanControlled (Zone n _ t l)  = Zone n (Occupied (Left German)) t l
 contested (Zone n _ t l)         = Zone n (Occupied (Right ())) t l
 
-serverPort = 4567
+serverPort = 5678
