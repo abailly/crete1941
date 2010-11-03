@@ -12,14 +12,18 @@ import Control.Exception(finally)
 import Network.Socket
 import Control.Concurrent(forkIO,myThreadId, ThreadId,putMVar,MVar)
 import Network.BSD
+import Control.Arrow(second)
 import Control.Monad
 import Control.Monad.Reader
 import Control.Monad.State
+import Text.Regex.TDFA
+
 import MovementRules
 import Terrain
 import CommandsInterpreter
 import Commands.IO
-import Text.Regex.TDFA
+import Commands.JSON
+import qualified Text.JSON as J
 
 newtype CommandHandleIO a = CommandHandleIO { runHandle :: ReaderT Handle IO a }
                             deriving (Monad,MonadIO, MonadReader Handle)
@@ -40,7 +44,7 @@ instance CommandIO (CommandHandleIO) where
                            | otherwise              = hGetLine r >>= globToEmptyLine r 
 
    writeResult (Msg str) = ask >>= (httpReply $ unlines str)
-   writeResult r         = ask >>= (httpReply $ show r)
+   writeResult r         = ask >>= (httpReply $ J.encode r)
    writeMessage msg      = ask >>= (httpReply msg)
    doExit                = ask >>= liftIO . hClose
                            

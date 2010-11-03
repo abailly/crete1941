@@ -33,17 +33,15 @@ simpleHttpContent url =
                              rqBody = ""}
           uri = fromJust $ parseURI url
 
-matchReplyContentToRESTCommandsFor t (pat,contentMatch) = do mvar <- newEmptyMVar
-                                                             startServer terrain (fromIntegral serverPort)  mvar          
-                                                             output <- simpleHttpContent ("http://127.0.0.1:" ++ show serverPort ++ pat)
+matchReplyContentToRESTCommandsFor t (pat,contentMatch) = do output <- simpleHttpContent ("http://127.0.0.1:" ++ show serverPort ++ pat)
                                                              simpleHttpContent ("http://127.0.0.1:" ++ show serverPort ++ "/Exit")
                                                              output @?= contentMatch
-                                                             putMVar mvar () 
   
 interactThroughAnHttpServer = 
   "interacting with Crete 1941 through a REST API"  `shouldBe`
   matchReplyContentToRESTCommandsFor terrain `with`
   [
-    ("/GetUnitLocations", "\"unit\": \"Campbell\", zone: \"Rethymnon\"")
+    ("/GetUnitLocations", "{\"unitLocations\":{\"Campbell\":\"Rethymnon\",\"arm1\":\"Rethymnon\",\"hq1\":\"Beach\",\"inf1\":\"Rethymnon\"}}"),
+    ("/GetUnitStatus",  "{\"unitStatus\":{\"Campbell\":{\"unitName\":\"Campbell\",\"unitSide\":\"British\",\"unitState\":\"Full\",\"unitStrength\":{\"offense\":0,\"defense\":3,\"movement\":8},\"unitType\":\"DivisionHQ\",\"unitHq\":{\"Nothing\":null}},\"arm1\":{\"unitName\":\"arm1\",\"unitSide\":\"German\",\"unitState\":\"Full\",\"unitStrength\":{\"offense\":0,\"defense\":3,\"movement\":1},\"unitType\":\"Armoured\",\"unitHq\":{\"Nothing\":null}},\"hq1\":{\"unitName\":\"hq1\",\"unitSide\":\"German\",\"unitState\":\"Full\",\"unitStrength\":{\"offense\":0,\"defense\":3,\"movement\":8},\"unitType\":\"DivisionHQ\",\"unitHq\":{\"Nothing\":null}},\"inf1\":{\"unitName\":\"Campbell\",\"unitSide\":\"British\",\"unitState\":\"Full\",\"unitStrength\":{\"offense\":0,\"defense\":3,\"movement\":0},\"unitType\":\"Infantry\",\"unitHq\":{\"Just\":\"Campbell\"}}}}")
   ]
   
