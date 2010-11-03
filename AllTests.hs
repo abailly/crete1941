@@ -15,9 +15,10 @@ data TestCount = TestCount Int Test
 
 tests = T $ test [unitManipulations,
                   movementRules,
+                  combatRules,
                   commandsHandling,
-                  decodeCommandsFromStrings,
-                  interactThroughAnHttpServer
+                  decodeCommandsFromStrings
+--                 ,interactThroughAnHttpServer
                  ]
 
 runAllTests = do putStrLn "Running test suite: "

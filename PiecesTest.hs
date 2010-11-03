@@ -1,13 +1,15 @@
 module PiecesTest where
 import Test.HUnit
 import Test.QuickCheck
-import MovementRules
-import Terrain.Simple
 import Control.Monad.State
 import qualified Data.Map as M
 import Control.Arrow
 import Control.Monad
 import TestUtilities
+
+import MovementRules
+import CombatRules
+import Terrain.Simple
 import TestData
 
 mpsForHQFromRethymnonIs         target expected = movementCost germanHQ rethymnon target terrain @?= expected
@@ -26,7 +28,7 @@ movementRules = test [
   "cost of movement for units" `shouldBe` 
   uncurry mpsForHQFromRethymnonIs `with` 
   [
-    (beach, Just 1),
+    (beach           , Just 1),
     (roughWithRoad   , Just 1),
     (countryside     , Just 2),
     (mountain        , Just 4),
@@ -60,4 +62,15 @@ movementRules = test [
     "store updated status of unit when it has moved" `for`
     moveCapacity (unit "Campbell" $ (execState . runBattle) (move "Campbell" "Country") terrain)  ~?= 6
     ]
+  ]
+                
+combatRules = test [
+  "one infantry unit firing another in adjacent zone" `should` [
+     "divide defender's value by 2 when outcome is very favorable to attacker" `for`
+     fireOutcome (germanI100,beach,12) (greek1stRgt,beach,2) ~?= CombatOutcome [reduce greek1stRgt],
+     "divide defender's value by 2 when outcome is favorable to attacker" `for`
+     fireOutcome (germanI100,beach,6) (nz22ndBat,beach,5)    ~?= CombatOutcome [reduce nz22ndBat],
+     "divide both parties' value by 2 when outcome is draw" `for`
+     fireOutcome (germanI100,beach,6) (nz22ndBat,beach,7)    ~?= CombatOutcome [reduce nz22ndBat, reduce germanI100]
+     ] 
   ]

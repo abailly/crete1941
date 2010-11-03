@@ -21,8 +21,7 @@ import MovementRules
 import Terrain
 import CommandsInterpreter
 import Commands.IO
--- import Commands.JSON
-import qualified Text.JSON as J
+
 import qualified Text.JSON.Generic as JG
 
 newtype CommandHandleIO a = CommandHandleIO { runHandle :: ReaderT Handle IO a }

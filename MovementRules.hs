@@ -10,8 +10,6 @@ module MovementRules(module Common,
 import Common
 import Units
 import Terrain
-import Data.Graph.Inductive.Graph
-import Data.Graph.Inductive.Tree
 import Control.Applicative(Applicative, (<$>))
 import Control.Monad.State
 

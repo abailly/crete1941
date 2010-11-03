@@ -3,11 +3,23 @@ import MovementRules
 import Terrain.Simple
 import qualified Data.Map as M
 
-
+-- for testing
 germanHQ        = Unit "hq1" German Full (UnitState 0 3 8)  DivisionHQ Nothing
 britishHQ       = Unit "Campbell" British Full (UnitState 0 3 8)  DivisionHQ Nothing
 britishInf      = Unit "Campbell" British Full (UnitState 0 3 0)  Infantry (Just britishHQ)
 germanArm       = Unit "arm1" German Full (UnitState 0 3 1)  Armoured Nothing
+
+-- german roster
+gjDiv5          = Unit "HQ GebirsJager Div 5" German Full (UnitState 0 3 6) DivisionHQ Nothing
+germanI100      = Unit "I/100 Rgt" German Full (UnitState 4 3 6)  Infantry (Just gjDiv5)
+germanII100     = Unit "II/100 Rgt" German Full (UnitState 4 3 6)  Infantry (Just gjDiv5)
+
+-- british roster
+hq5Brigade      = Unit "HQ 5th Brigade" British Full (UnitState 3 3 0) RegimentHQ Nothing
+greek1stRgt     = Unit "Greek 1st Reg" British Full (UnitState 2 2 4) Infantry (Just hq5Brigade)
+nz21stBat       = Unit "NZ 21st Bat" British Full (UnitState 2 3 6) Infantry (Just hq5Brigade)
+nz22ndBat       = Unit "NZ 22nd Bat" British Full (UnitState 4 3 6) Infantry (Just hq5Brigade)
+
 rethymnon       = Zone "Rethymnon" Unoccupied [City,Port] Flat
 beach           = Zone "Beach" Unoccupied [Clear,Port,Beach] Flat
 roughWithRoad   = Zone "Rough" Unoccupied [Clear, Road] Rough
