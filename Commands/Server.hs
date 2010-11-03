@@ -1,5 +1,4 @@
 {-# LANGUAGE FlexibleInstances, GeneralizedNewtypeDeriving #-}
-
 module Commands.Server where
 
 import Prelude hiding (null)
@@ -22,8 +21,9 @@ import MovementRules
 import Terrain
 import CommandsInterpreter
 import Commands.IO
-import Commands.JSON
+-- import Commands.JSON
 import qualified Text.JSON as J
+import qualified Text.JSON.Generic as JG
 
 newtype CommandHandleIO a = CommandHandleIO { runHandle :: ReaderT Handle IO a }
                             deriving (Monad,MonadIO, MonadReader Handle)
@@ -44,7 +44,7 @@ instance CommandIO (CommandHandleIO) where
                            | otherwise              = hGetLine r >>= globToEmptyLine r 
 
    writeResult (Msg str) = ask >>= (httpReply $ unlines str)
-   writeResult r         = ask >>= (httpReply $ J.encode r)
+   writeResult r         = ask >>= (httpReply $ JG.encodeJSON r)
    writeMessage msg      = ask >>= (httpReply msg)
    doExit                = ask >>= liftIO . hClose
                            

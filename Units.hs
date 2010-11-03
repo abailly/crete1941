@@ -1,15 +1,18 @@
+{-# LANGUAGE DeriveDataTypeable #-}
 module Units where
 import Common
+import qualified Data.Generics as G
+
 
 data UnitState = UnitState { offense :: Int,
                              defense :: Int,
                              movement :: Int }
-                 deriving (Eq, Show, Read)
+                 deriving (Eq, Show, Read, G.Data, G.Typeable)
                           
 data State = Full 
            | Reduced 
            | Disorganized
-           deriving (Eq, Show, Read)
+           deriving (Eq, Show, Read, G.Data, G.Typeable)
                     
 data UnitType = Artillery 
               | Armoured
@@ -17,7 +20,7 @@ data UnitType = Artillery
               | Flak
               | DivisionHQ
               | RegimentHQ
-                deriving (Eq, Show, Ord, Read)
+                deriving (Eq, Show, Ord, Read, G.Data, G.Typeable)
                          
 data Unit = Unit { unitName     :: Name, 
                    unitSide     :: Side, 
@@ -25,7 +28,7 @@ data Unit = Unit { unitName     :: Name,
                    unitStrength :: UnitState, 
                    unitType     :: UnitType, 
                    unitHq       :: (Maybe Unit) }
-          deriving (Eq, Show, Read)
+          deriving (Eq, Show, Read, G.Data, G.Typeable)
 
 -- | Decrease the movement capacity of the unit by the 
 -- given amount

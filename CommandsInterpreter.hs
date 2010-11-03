@@ -1,10 +1,11 @@
-{-# LANGUAGE GeneralizedNewtypeDeriving, MultiParamTypeClasses, FlexibleInstances, FlexibleContexts #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving, MultiParamTypeClasses, FlexibleInstances, FlexibleContexts, DeriveDataTypeable #-}
 module CommandsInterpreter where
 import MovementRules
 import Terrain
 import Control.Monad
 import Control.Monad.State
 import Debug.Trace
+import qualified Data.Generics as G
 
 
 data Command = GetUnitLocations 
@@ -22,7 +23,7 @@ data CommandResult = UnitLocations [(Name,Name)]
                    | ErrorInCommands String
                    | Msg [String]
                    | Bye
-              deriving (Eq, Show, Read)
+              deriving (Eq, Show, Read, G.Data, G.Typeable)
 
 -- |Low-level I/O routines for command interaction
 -- Abstract away from the details of 
