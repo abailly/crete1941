@@ -42,3 +42,9 @@ moveCapacity (Unit n s st (UnitState o d m) t h) = m
 -- |Compare unit by their names
 compareUnitsBy :: (Ord a) => (Unit -> a) -> Unit -> Unit -> Ordering
 compareUnitsBy f u1 u2 = compare (f u1) (f u2)
+
+-- |Attack strength of unit
+attack = offense . unitStrength
+
+-- |Defense strength of unit
+defend = defense . unitStrength

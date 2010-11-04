@@ -12,10 +12,13 @@ import CombatRules
 import Terrain.Simple
 import TestData
 
-mpsForHQFromRethymnonIs         target expected = movementCost germanHQ rethymnon target terrain @?= expected
+spendMpsFrom unit zone (target,expected)  = ("MPs expense from " ++ show (zoneName target)  ++ " are " ++ show expected) ~: 
+                                            movementCost unit zone target terrain @?= expected
+
+mpsForHQFromRethymnonIs         target expected = movementCost germanHQ  rethymnon target terrain @?= expected
 mpsForBritishHQFromRethymnonIs  target expected = movementCost britishHQ rethymnon target terrain @?= expected
 mpsForMechFromRethymnonIs       target expected = movementCost germanArm rethymnon target terrain @?= expected
-matchingLocationForUnitInTerrain (name, zone) = unitLocation name terrain  @?= zone  
+matchingLocationForUnitInTerrain (name, zone)   = (name ++ " is in " ++ show zone) ~: unitLocation name terrain @?= zone  
 
 unitManipulations = test [
   "update data of unit" `should` [
@@ -25,8 +28,8 @@ unitManipulations = test [
   ]
                     
 movementRules = test [
-  "cost of movement for units" `shouldBe` 
-  uncurry mpsForHQFromRethymnonIs `with` 
+  "cost of movement for units" `should` (
+  germanHQ `spendMpsFrom` rethymnon `with` 
   [
     (beach           , Just 1),
     (roughWithRoad   , Just 1),
@@ -35,22 +38,23 @@ movementRules = test [
     (strategicZone   , Just 6),
     (roadCountry     , Just 1),
     (nonAdjacentZone , Nothing)
-  ],
+  ]),
     
-  "cost of movement to controlled & contested zones" `shouldBe` [
-    britishControlled roughWithRoad `mpsForHQFromRethymnonIs` Just 2,
-    contested mountain `mpsForHQFromRethymnonIs` Just 5,
-    germanControlled roadCountry `mpsForBritishHQFromRethymnonIs` Just 2,
-    contested mountain `mpsForBritishHQFromRethymnonIs` Just 5
+  "cost of movement to controlled & contested zones" `should` [
+    germanHQ `spendMpsFrom` rethymnon $ (britishControlled roughWithRoad,Just 2),
+    germanHQ `spendMpsFrom` rethymnon $ (contested mountain, Just 5),
+    britishHQ `spendMpsFrom` rethymnon $ (germanControlled roadCountry, Just 2),
+    britishHQ `spendMpsFrom` rethymnon $ (contested mountain, Just 5)
     ],
   
-  "cost of movement for mechanized units" `shouldBe`  uncurry mpsForMechFromRethymnonIs `with`
+  "cost of movement for mechanized units" `should` ( 
+  germanArm `spendMpsFrom` rethymnon `with`
   [
     (roughWithRoad,Just 1),
     (roughNoRoad,Nothing)
-  ],
+  ]),
   
-  "unit initial location" `shouldBe` matchingLocationForUnitInTerrain `with` unitToLocations,
+  "unit initial location" `should` (matchingLocationForUnitInTerrain `with` unitToLocations),  
   
   "moving unit to target zone" `should` [
     "change unit's location in terrain if it has enough MPs and change its MPs" `for`
@@ -65,12 +69,21 @@ movementRules = test [
   ]
                 
 combatRules = test [
-  "one infantry unit firing another in adjacent zone" `should` [
-     "divide defender's value by 2 when outcome is very favorable to attacker" `for`
-     fireOutcome (germanI100,beach,12) (greek1stRgt,beach,2) ~?= CombatOutcome [reduce greek1stRgt],
-     "divide defender's value by 2 when outcome is favorable to attacker" `for`
-     fireOutcome (germanI100,beach,6) (nz22ndBat,beach,5)    ~?= CombatOutcome [reduce nz22ndBat],
-     "divide both parties' value by 2 when outcome is draw" `for`
-     fireOutcome (germanI100,beach,6) (nz22ndBat,beach,7)    ~?= CombatOutcome [reduce nz22ndBat, reduce germanI100]
-     ] 
+  "one infantry unit firing another in adjacent clear zones" `should` [
+     "reduce defender when outcome is favorable to attacker" `for`
+     fireOutcome (germanI100,beach,6) (nz22ndBat,beach,5)    ~?= [Reduce nz22ndBat],
+     "eliminate defender when outcome is very favorable to attacker" `for`
+     fireOutcome (germanI100,beach,5) (greek1stRgt,beach,2)  ~?= [Eliminate greek1stRgt],
+     "reduce value by 2 when outcome is favorable to defender" `for`
+     fireOutcome (germanI100,beach,5) (nz22ndBat,beach,7)    ~?= [Reduce germanI100],
+     "reduce both parties' when outcome is draw" `for`
+     fireOutcome (germanI100,beach,6) (nz22ndBat,beach,7)    ~?= [Reduce nz22ndBat, Reduce germanI100]
+     ],
+  
+  "one infantry unit assaulting another in a zone" `should` [
+    "reduce defender and retreat when outcome is very favorable to attacker" `for`
+    assaultOutcome (germanI100,beach,5) (greek1stRgt,beach,2)  ~?= [Reduce greek1stRgt, Retreat greek1stRgt],
+    "reduce defender when outcome is favorable to attacker" `for`
+    assaultOutcome (germanI100,beach,6) (nz22ndBat,beach,5)    ~?= [Reduce nz22ndBat]
+    ]
   ]
