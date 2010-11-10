@@ -122,10 +122,16 @@ combatRules = "combat rules" ~: test [
     eval (engage "II/100 Rgt" "NZ 22nd Bat" ) ~?= NoCombat,
     "fire combat order is issued when assaulting is not possible but fire is possible" `for`
     eval (engage "I/100 Rgt" "NZ 22nd Bat" ) ~?= (germanI100,[],beach,4) :--> (nz22ndBat,[],rethymnon,2)
+    ],
+  
+  given "a combat order is issued" [
+    "battle map is updated with combat outcome and outcome has old unit status" `for`
+    ((attack.changedUnit.head) *** (attack.unit "NZ 21st Bat")) (run (combat "II/100 Rgt" "NZ 21st Bat")) ~?= (2,1)
     ]
   ]
   where
     eval = flip (evalState.runBattle) terrain
+    run  = flip (runState.runBattle) terrain
 
 combatEffect = given "some combat outcome"  [
   "When reducing unit then it halves its attack strength" `for`

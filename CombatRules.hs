@@ -1,19 +1,38 @@
+{-# LANGUAGE MultiParamTypeClasses, TypeFamilies, DeriveDataTypeable #-}
 module CombatRules where
 import Common
+import Orders
 import Units
 import Terrain
 import Data.Maybe(fromJust)
 import Control.Arrow
 import Control.Monad.State(get)
+import qualified Data.Generics as G
 
-data Combat = Force :##> Force
-            | Force :--> Force
-            | NoCombat
-            deriving (Eq, Show)
+-- |A combat order.
+data Combat = Force :##> Force -- ^Represent an assault order. Assault implies both units are colocated.
+            | Force :--> Force -- ^Represent a fire order. Fire may be done between adjacent zones.
+            | NoCombat         
+            deriving (Eq, Show, G.Data, G.Typeable)
   
-engage :: (BattleMap t) => 
-          Name         -- ^Attacking Unit
-          -> Name      -- ^Defending Unit
+instance Order Combat where
+  type Result Combat = [CombatOutcome]
+  execute (att :##> def) = mapM combatOutcome (att ##> def)
+  execute (att :--> def) = mapM combatOutcome (att --> def)
+  execute NoCombat       = return []
+  
+-- |Run a combat between two named units.
+-- Returns the outcome of the combat as a list of results affecting units (which may possibly be empty if
+-- combat yield no result). The battle map is updated with the new unit status and possibly locations.
+combat :: (BattleMap t) 
+          => Name                     -- ^Attacking Unit
+          -> Name                     -- ^Defending Unit
+          -> Battle t [CombatOutcome] -- ^Combat order issued
+combat aname dname  = engage aname dname >>= execute
+
+engage :: (BattleMap t) 
+          => Name            -- ^Attacking Unit
+          -> Name            -- ^Defending Unit
           -> Battle t Combat -- ^Combat order issued
 engage aname dname = do canEngage <- tryAssault aname dname
                         case canEngage of 
@@ -57,6 +76,11 @@ data CombatOutcome = Reduce Unit    -- ^Unit is reduced
                    | Retreat Unit   -- ^Unit must retreat to adjacent zone
                    deriving (Eq)
                                  
+changedUnit :: CombatOutcome -> Unit
+changedUnit (Reduce    u) = u
+changedUnit (Eliminate u) = u
+changedUnit (Retreat   u) = u
+
 instance Show CombatOutcome where
   show (Reduce u)    = "Reduce " ++ (unitName u)
   show (Eliminate u) = "Eliminate " ++ (unitName u)
