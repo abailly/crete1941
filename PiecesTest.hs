@@ -1,24 +1,30 @@
 module PiecesTest where
 import Test.HUnit
 import Test.QuickCheck
-import Control.Monad.State
+import Control.Monad.State(runState,execState,evalState)
 import qualified Data.Map as M
 import Control.Arrow
-import Control.Monad
-import TestUtilities
+import TestUtilities(when, for,should,with, given)
 
 import MovementRules
 import CombatRules
 import Terrain.Simple
 import TestData
 
-spendMpsFrom unit zone (target,expected)  = ("MPs expense from " ++ show (zoneName target)  ++ " are " ++ show expected) ~: 
+mpsExpendedFrom unit zone (target,expected)  = ("MPs expense from " ++ show (zoneName target)  ++ " are " ++ show expected) ~: 
                                             movementCost unit zone target terrain @?= expected
 
 mpsForHQFromRethymnonIs         target expected = movementCost germanHQ  rethymnon target terrain @?= expected
 mpsForBritishHQFromRethymnonIs  target expected = movementCost britishHQ rethymnon target terrain @?= expected
 mpsForMechFromRethymnonIs       target expected = movementCost germanArm rethymnon target terrain @?= expected
 matchingLocationForUnitInTerrain (name, zone)   = (name ++ " is in " ++ show zone) ~: unitLocation name terrain @?= zone  
+
+germanRgtInClear dice = (germanI100,[],beach,dice)
+britRgtInClear dice   = (nz22ndBat,[],beach,dice)
+reduceAndRetreatAttacker = [Reduce germanI100,Retreat germanI100]
+retreatSupport = [Retreat germanII100]
+reduceAndRetreatDefender = [Reduce nz22ndBat, Retreat nz22ndBat]
+reduceDefender = [Reduce nz22ndBat]
 
 unitManipulations = test [
   "update data of unit" `should` [
@@ -27,9 +33,9 @@ unitManipulations = test [
      ]
   ]
                     
-movementRules = test [
+movementRules = "movement rules" ~: test [
   "cost of movement for units" `should` (
-  germanHQ `spendMpsFrom` rethymnon `with` 
+  germanHQ `mpsExpendedFrom` rethymnon `with` 
   [
     (beach           , Just 1),
     (roughWithRoad   , Just 1),
@@ -41,14 +47,14 @@ movementRules = test [
   ]),
     
   "cost of movement to controlled & contested zones" `should` [
-    germanHQ `spendMpsFrom` rethymnon $ (britishControlled roughWithRoad,Just 2),
-    germanHQ `spendMpsFrom` rethymnon $ (contested mountain, Just 5),
-    britishHQ `spendMpsFrom` rethymnon $ (germanControlled roadCountry, Just 2),
-    britishHQ `spendMpsFrom` rethymnon $ (contested mountain, Just 5)
+    germanHQ `mpsExpendedFrom` rethymnon $ (britishControlled roughWithRoad,Just 2),
+    germanHQ `mpsExpendedFrom` rethymnon $ (contested mountain, Just 5),
+    britishHQ `mpsExpendedFrom` rethymnon $ (germanControlled roadCountry, Just 2),
+    britishHQ `mpsExpendedFrom` rethymnon $ (contested mountain, Just 5)
     ],
   
   "cost of movement for mechanized units" `should` ( 
-  germanArm `spendMpsFrom` rethymnon `with`
+  germanArm `mpsExpendedFrom` rethymnon `with`
   [
     (roughWithRoad,Just 1),
     (roughNoRoad,Nothing)
@@ -68,22 +74,57 @@ movementRules = test [
     ]
   ]
                 
-combatRules = test [
-  "one infantry unit firing another in adjacent clear zones" `should` [
-     "reduce defender when outcome is favorable to attacker" `for`
-     fireOutcome (germanI100,beach,6) (nz22ndBat,beach,5)    ~?= [Reduce nz22ndBat],
-     "eliminate defender when outcome is very favorable to attacker" `for`
-     fireOutcome (germanI100,beach,5) (greek1stRgt,beach,2)  ~?= [Eliminate greek1stRgt],
-     "reduce value by 2 when outcome is favorable to defender" `for`
-     fireOutcome (germanI100,beach,5) (nz22ndBat,beach,7)    ~?= [Reduce germanI100],
-     "reduce both parties' when outcome is draw" `for`
-     fireOutcome (germanI100,beach,6) (nz22ndBat,beach,7)    ~?= [Reduce nz22ndBat, Reduce germanI100]
-     ],
+combatRules = "combat rules" ~: test [
   
-  "one infantry unit assaulting another in a zone" `should` [
-    "reduce defender and retreat when outcome is very favorable to attacker" `for`
-    assaultOutcome (germanI100,beach,5) (greek1stRgt,beach,2)  ~?= [Reduce greek1stRgt, Retreat greek1stRgt],
-    "reduce defender when outcome is favorable to attacker" `for`
-    assaultOutcome (germanI100,beach,6) (nz22ndBat,beach,5)    ~?= [Reduce nz22ndBat]
+  given "more than one unit assaults a single unit in a zone" [
+    "supporting unit ads +1 to attacker" `for` 
+    (germanI100,[germanII100],beach,6) ##> (britRgtInClear 7)                       ~?= reduceDefender,
+    "supporting units retreat when outcome is very favorable to defender" `for` 
+    (germanI100,[germanII100],beach,2) ##> (britRgtInClear 12)                      ~?= reduceAndRetreatAttacker ++ retreatSupport,
+    "3 batallions adds +1 to attacker" `for` 
+    (germanI100,[germanII100,germanII100],beach,4) ##> (britRgtInClear 7)           ~?= reduceDefender,
+    "3 batallions adds +1 to attacker" `for` 
+    (germanI100,[germanII100,germanI85,germanII100],beach,3) ##> (britRgtInClear 7) ~?= reduceDefender,
+    "own HQ adds +1 to attacker" `for` 
+    (nz22ndBat,[hq5Brigade],beach,3) ##> (germanRgtInClear 5)                       ~?= [Reduce germanI100]
+    ],
+  
+  given "one unit attacking a defender in some special situation"  [
+    "own HQ adds +1 to defender" `when`
+    (germanRgtInClear 5) ##> (nz22ndBat,[hq5Brigade],beach,6)       ~?= reduceAndRetreatAttacker,
+    "wood terrain adds +1" `for` 
+    (germanRgtInClear 5) ##> (nz22ndBat,[hq5Brigade],woody,5)       ~?= reduceAndRetreatAttacker,
+    "rough terrain adds +1" `for` 
+    (germanRgtInClear 5) ##> (nz22ndBat,[hq5Brigade],roughNoRoad,5) ~?= reduceAndRetreatAttacker,
+    "hill terrain adds +2" `for` 
+    (germanRgtInClear 5) ##> (nz22ndBat,[hq5Brigade],hilly,4)       ~?= reduceAndRetreatAttacker,
+    "terrain bonus is cumulative" `for` 
+    (germanRgtInClear 5) ##> (nz22ndBat,[],countryside,4)           ~?= reduceAndRetreatAttacker
+    ],
+  
+  given "one unit tries to attack a defender" [
+    "when units are not in same zone, assault is prohibited" `for`
+    ((evalState.runBattle) (tryAssault "I/100 Rgt" "NZ 22nd Bat") terrain) ~?= Nothing,
+    "when units are not in same zone, fire is permited" `for`
+    ((evalState.runBattle) (tryFire    "I/100 Rgt" "NZ 22nd Bat") terrain) ~?= Just (germanI100,[],beach,nz22ndBat,[],rethymnon),
+    "when zonez are not adjacent, fire is prohibited" `for`
+    ((evalState.runBattle) (tryFire    "I/100 Rgt" "NZ 21st Bat") terrain) ~?= Nothing,
+    "when units are in same zone, assault is permitted" `for`
+    ((evalState.runBattle) (tryAssault "II/100 Rgt" "NZ 21st Bat") terrain) ~?= Just (germanII100,[],hilly,nz21stBat,[],hilly),
+    "colocated units contribute to attack for" `for`
+    ((evalState.runBattle) (tryAssault "III/100 Rgt" "Greek 1st Reg") terrain) ~?= Just (germanIII100,[gj85Rgt],roadCountry,greek1stRgt,[],roadCountry)
     ]
   ]
+
+combatEffect = given "some combat outcome"  [
+  "When reducing unit then it halves its attack strength" `for`
+  attack (unit "I/100 Rgt" $ runCombat (Reduce germanI100))  ~?= 2,
+  "When eliminated, unit disappears from battle" `for`
+  "I/100 Rgt" `elem` map fst (allUnitStatus $ runCombat (Eliminate germanI100))  ~?= False ,
+  "When reducing unit then it set its state to reduced" `for`
+  unitState (unit "I/100 Rgt" $ runCombat (Reduce germanI100))  ~?= Reduced,
+  "When reducing reduced unit then it its eliminated" `for`
+  "I/100 Rgt" `elem` map fst (allUnitStatus $ runCombat (Reduce $ reduce germanI100))  ~?= False
+  ]
+  where
+    runCombat = flip (execState.runBattle) terrain . combatOutcome

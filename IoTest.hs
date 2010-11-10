@@ -9,11 +9,11 @@ import TestUtilities
 import TestData
 
 readSimpleCommandsFromStrings (s,c) = 
-  decode s @?= c
+  s ++ " yields " ++ (show c) ~: decode s @?= c
   
 decodeCommandsFromStrings = test [
-  "commands decoding" `shouldBe` 
-  readSimpleCommandsFromStrings `with` 
+  "Decoding command" `should` 
+  (readSimpleCommandsFromStrings `with` 
   [
     ("GetUnitLocations", Right GetUnitLocations),
     ("GetUnitStatus", Right GetUnitStatus),
@@ -21,5 +21,5 @@ decodeCommandsFromStrings = test [
     ("move arm1 rethymnon", Right $MoveUnit "arm1" "rethymnon"),
     ("exit", Right Exit),
     ("unknown command", Left "unknown command")
-  ]
+  ])
   ]

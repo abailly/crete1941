@@ -15,6 +15,8 @@ class Terrain t where
   unitLocation :: Name  -> t -> Name
   -- | Gives the zone data associated with given name
   zone  :: t -> Name -> Zone
+  -- | Gives the names of unit located in some zone
+  unitsIn  :: t -> Name -> [Name]
   -- | Gives the unit data associated with given name
   unit  :: Name -> t -> Unit
   -- | Give the location of all the units
@@ -28,6 +30,12 @@ class (Terrain t) => BattleMap t where
   areConnected  :: Name -> Name -> Battle t (Maybe Bool)
   -- | Gives the current location of the given named unit within the terrain
   whereIs :: Name -> Battle t Name
+  -- | Gives the current status of the given named unit within the terrain
+  statusOf :: Name -> Battle t Unit
+  -- | Unit is eliminated
+  eliminate :: Unit -> Battle t Unit
+  -- | Change the status of the unit 
+  updateStatusOf :: Unit -> Battle t Unit
   -- | Gives the zone data associated with given name
   zoneDataFor  :: Name -> Battle t Zone
   -- | Ensure unit's position is modified.

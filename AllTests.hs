@@ -16,6 +16,7 @@ data TestCount = TestCount Int Test
 tests = T $ test [unitManipulations,
                   movementRules,
                   combatRules,
+                  combatEffect,
                   commandsHandling,
                   decodeCommandsFromStrings
 --                 ,interactThroughAnHttpServer

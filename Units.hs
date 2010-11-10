@@ -2,7 +2,7 @@
 module Units where
 import Common
 import qualified Data.Generics as G
-
+import Data.Maybe(fromJust)
 
 data UnitState = UnitState { offense :: Int,
                              defense :: Int,
@@ -30,6 +30,11 @@ data Unit = Unit { unitName     :: Name,
                    unitHq       :: (Maybe Unit) }
           deriving (Eq, Show, Read, G.Data, G.Typeable)
 
+-- |Tells whether or not 2 units are from same regiment
+sameRegiment :: Unit -> Unit -> Bool
+sameRegiment u u' | unitHq u /= Nothing = unitHq u == unitHq u' && unitType (fromJust $ unitHq u) == RegimentHQ
+                  | otherwise           = False
+                                          
 -- | Decrease the movement capacity of the unit by the 
 -- given amount
 unitMovesBy :: Unit -> Int -> Unit

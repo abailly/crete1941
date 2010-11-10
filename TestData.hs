@@ -11,8 +11,12 @@ germanArm       = Unit "arm1" German Full (UnitState 0 3 1)  Armoured Nothing
 
 -- german roster
 gjDiv5          = Unit "HQ GebirsJager Div 5" German Full (UnitState 0 3 6) DivisionHQ Nothing
-germanI100      = Unit "I/100 Rgt" German Full (UnitState 4 3 6)  Infantry (Just gjDiv5)
-germanII100     = Unit "II/100 Rgt" German Full (UnitState 4 3 6)  Infantry (Just gjDiv5)
+gj100Rgt        = Unit "HQ GJ 100 Rgt" German Full (UnitState 0 3 6) RegimentHQ (Just gjDiv5)
+germanI100      = Unit "I/100 Rgt" German Full (UnitState 4 3 6)  Infantry (Just gj100Rgt)
+germanII100     = Unit "II/100 Rgt" German Full (UnitState 4 3 6)  Infantry (Just gj100Rgt)
+germanIII100    = Unit "III/100 Rgt" German Full (UnitState 4 3 6)  Infantry (Just gj100Rgt)
+gj85Rgt         = Unit "HQ GJ 85 Rgt" German Full (UnitState 0 3 6) RegimentHQ (Just gjDiv5)
+germanI85       = Unit "I/85 Rgt" German Full (UnitState 4 3 6)  Infantry (Just gj85Rgt)
 
 -- british roster
 hq5Brigade      = Unit "HQ 5th Brigade" British Full (UnitState 3 3 0) RegimentHQ Nothing
@@ -24,30 +28,51 @@ rethymnon       = Zone "Rethymnon" Unoccupied [City,Port] Flat
 beach           = Zone "Beach" Unoccupied [Clear,Port,Beach] Flat
 roughWithRoad   = Zone "Rough" Unoccupied [Clear, Road] Rough
 roughNoRoad     = Zone "RoughNoRoad" Unoccupied [Clear] Rough
+woody           = Zone "Woody" Unoccupied [Wood] Flat
+hilly           = Zone "Hilly" Unoccupied [Clear] Hilly
 countryside     = Zone "Country" Unoccupied [Wood] Hilly
 roadCountry     = Zone "CountryRoad" Unoccupied [Wood] Hilly
 mountain        = Zone "Mountain" Unoccupied [Wood] Mountain
 strategicZone   = Zone "A" Unoccupied [Strategic] Mountain
 nonAdjacentZone = Zone "Other" Unoccupied [Clear] Flat
+
 unitToLocations = [("Campbell", "Rethymnon"), 
                    ("hq1", "Beach"),
                    ("arm1", "Rethymnon"),
-                   ("inf1", "Rethymnon")]
+                   ("inf1", "Rethymnon"),
+                   ("I/100 Rgt", "Beach"),
+                   ("II/100 Rgt", "Hilly"),
+                   ("III/100 Rgt", "CountryRoad"),
+                   ("I/85 Rgt", "CountryRoad"),
+                   ("NZ 22nd Bat", "Rethymnon"),
+                   ("Greek 1st Reg", "CountryRoad"),
+                   ("NZ 21st Bat", "Hilly")
+                   ]
 unitToStatus      = [("Campbell", britishHQ),
                      ("arm1", germanArm), 
                      ("hq1", germanHQ),
-                     ("inf1",britishInf)]
+                     ("inf1",britishInf),
+                     ("I/100 Rgt", germanI100),
+                     ("II/100 Rgt", germanII100),
+                     ("III/100 Rgt", germanIII100),
+                     ("I/85 Rgt", gj85Rgt),
+                     ("Greek 1st Reg", greek1stRgt),
+                     ("NZ 22nd Bat",nz22ndBat),
+                     ("NZ 21st Bat",nz21stBat)]
 zoneToStatus      = [("Rethymnon", rethymnon), 
-                   ("Beach", beach), 
-                   ("CountryRoad",roadCountry),
-                   ("Country",countryside)]
+                     ("Beach", beach), 
+                     ("CountryRoad",roadCountry),
+                     ("Country",countryside),
+                     ("Hilly",hilly)]
 terrain     = Theater [("Rethymnon",[("Beach", True),
                                      ("Country", False),
                                      ("Rough", False),
                                      ("Country", False),
                                      ("CountryRoad", True),
                                      ("Mountain", False),
-                                     ("A", False)])]
+                                     ("A", False)]),
+                       ("Beach",[("Rethymnon", True)]),
+                       ("Hilly",[])]
               (M.fromList unitToLocations) 
               (M.fromList zoneToStatus)
               (M.fromList unitToStatus) 
