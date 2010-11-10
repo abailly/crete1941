@@ -6,6 +6,27 @@ import Data.Maybe(fromJust)
 import Control.Arrow
 import Control.Monad.State(get)
 
+data Combat = Force :##> Force
+            | Force :--> Force
+            | NoCombat
+            deriving (Eq, Show)
+  
+engage :: (BattleMap t) => 
+          Name         -- ^Attacking Unit
+          -> Name      -- ^Defending Unit
+          -> Battle t Combat -- ^Combat order issued
+engage aname dname = do canEngage <- tryAssault aname dname
+                        case canEngage of 
+                          Just possible -> resolveCombat (:##>) possible
+                          _             -> do canEngage <- tryFire aname dname 
+                                              case canEngage of 
+                                                Just possible -> resolveCombat (:-->) possible
+                                                _             -> return NoCombat
+
+resolveCombat combatType (att,asup,az,def,dsup,dz) = do adice <- throwDice
+                                                        ddice <- throwDice
+                                                        return $ (att,asup,az,fromIntegral adice) `combatType` (def,dsup,dz,fromIntegral ddice) 
+                                                        
 tryAssault :: (BattleMap t) => Name -> Name -> Battle t (Maybe (Unit,[Unit],Zone,Unit,[Unit],Zone))
 tryAssault attName defName  =  do t <- get
                                   azone <- whereIs attName

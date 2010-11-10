@@ -41,6 +41,8 @@ class (Terrain t) => BattleMap t where
   zoneDataFor  :: Name -> Battle t Zone
   -- | Ensure unit's position is modified.
   updateMovedUnit :: Unit -> Zone -> Battle t Unit
+  -- | Get a single dice throw 
+  throwDice :: Battle t Integer
   
 -- |Concrete type holding the state of the ongoing battle
 -- Implements state monad.

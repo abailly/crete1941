@@ -10,7 +10,8 @@ import qualified Control.Monad.State as S
 data Theater = Theater { zoneConnectivity :: [(Name,[(Name,Bool)])],
                          unitLocations    :: M.Map Name Name,
                          zoneState        :: M.Map Name Zone,
-                         unitStatus       :: M.Map Name Unit }
+                         unitStatus       :: M.Map Name Unit, 
+                         randomStream     :: [Integer] }
                          
 
 instance Terrain Theater where
@@ -23,6 +24,10 @@ instance Terrain Theater where
     allUnitStatus      = M.assocs . unitStatus
 
 instance BattleMap Theater where
+  throwDice     = do t <- S.get
+                     let random = randomStream t
+                     S.put $ t { randomStream = tail (random) }
+                     return $ head (random)
   whereIs uname = S.get >>= (return . unitLocation uname)
   updateMovedUnit u z = do t <- S.get 
                            S.put $ t { unitLocations = M.adjust (\ _ -> zoneName z) (unitName u) (unitLocations t), 

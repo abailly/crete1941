@@ -75,8 +75,14 @@ terrain     = Theater [("Rethymnon",[("Beach", True),
                        ("Hilly",[])]
               (M.fromList unitToLocations) 
               (M.fromList zoneToStatus)
-              (M.fromList unitToStatus) 
+              (M.fromList unitToStatus)
+              (alternatingDices 42)
 
+alternatingDices seed = firstDie : alternatingDices secondDie
+  where
+    firstDie = (seed `rem` 10 + 2)
+    secondDie = 14 - firstDie
+    
 britishControlled (Zone n _ t l) = Zone n (Occupied (Left British)) t l
 germanControlled (Zone n _ t l)  = Zone n (Occupied (Left German)) t l
 contested (Zone n _ t l)         = Zone n (Occupied (Right ())) t l

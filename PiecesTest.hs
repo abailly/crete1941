@@ -104,19 +104,28 @@ combatRules = "combat rules" ~: test [
   
   given "one unit tries to attack a defender" [
     "when units are not in same zone, assault is prohibited" `for`
-    combat (tryAssault "I/100 Rgt" "NZ 22nd Bat") ~?= Nothing,
+    eval (tryAssault "I/100 Rgt" "NZ 22nd Bat") ~?= Nothing,
     "when units are in adjacent zones, fire is permited" `for`
-    combat (tryFire    "I/100 Rgt" "NZ 22nd Bat") ~?= Just (germanI100,[],beach,nz22ndBat,[],rethymnon),
+    eval (tryFire    "I/100 Rgt" "NZ 22nd Bat") ~?= Just (germanI100,[],beach,nz22ndBat,[],rethymnon),
     "when unit are not in adjacent zones, fire is prohibited" `for`
-    combat (tryFire    "I/100 Rgt" "NZ 21st Bat") ~?= Nothing,
+    eval (tryFire    "I/100 Rgt" "NZ 21st Bat") ~?= Nothing,
     "when units are in same zone, assault is permitted" `for`
-    combat (tryAssault "II/100 Rgt" "NZ 21st Bat") ~?= Just (germanII100,[],hilly,nz21stBat,[],hilly),
+    eval (tryAssault "II/100 Rgt" "NZ 21st Bat") ~?= Just (germanII100,[],hilly,nz21stBat,[],hilly),
     "colocated units contribute to attack for" `for`
-    combat (tryAssault "III/100 Rgt" "Greek 1st Reg") ~?= Just (germanIII100,[gj85Rgt],roadCountry,greek1stRgt,[],roadCountry)
+    eval (tryAssault "III/100 Rgt" "Greek 1st Reg") ~?= Just (germanIII100,[gj85Rgt],roadCountry,greek1stRgt,[],roadCountry)
+    ],
+  
+  given "a unit engages another" [
+    "combat order is issued when engaging (and dices are thrown)" `for`
+    eval (engage "II/100 Rgt" "NZ 21st Bat" ) ~?= (germanII100,[],hilly,4) :##> (nz21stBat,[],hilly,2),
+    "no combat order is issued when assaulting is not possible" `for`
+    eval (engage "II/100 Rgt" "NZ 22nd Bat" ) ~?= NoCombat,
+    "fire combat order is issued when assaulting is not possible but fire is possible" `for`
+    eval (engage "I/100 Rgt" "NZ 22nd Bat" ) ~?= (germanI100,[],beach,4) :--> (nz22ndBat,[],rethymnon,2)
     ]
   ]
   where
-    combat = flip (evalState.runBattle) terrain
+    eval = flip (evalState.runBattle) terrain
 
 combatEffect = given "some combat outcome"  [
   "When reducing unit then it halves its attack strength" `for`
