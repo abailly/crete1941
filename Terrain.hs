@@ -1,9 +1,10 @@
-{-# LANGUAGE MultiParamTypeClasses, FunctionalDependencies, GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE MultiParamTypeClasses, FunctionalDependencies, GeneralizedNewtypeDeriving, DeriveDataTypeable #-}
 module Terrain where
 import Common
 import Units
 import qualified Data.Map as M
 import qualified Control.Monad.State as C
+import qualified Data.Generics as G
 
 class Terrain t where
   -- | Tell whether or not two zones identified by their name are connected
@@ -54,13 +55,13 @@ adjacent t n1 n2 = connection t n1 n2 /= Nothing
      
 data Control = Occupied (Either Side ())
              | Unoccupied
-          deriving (Eq, Show, Read)
+          deriving (Eq, Show, Read, G.Data, G.Typeable)
 
 data Landscape = Flat
               | Rough
               | Hilly
               | Mountain 
-              deriving (Eq, Show, Read)
+              deriving (Eq, Show, Read, G.Data, G.Typeable)
                    
 data TerrainType = Port
                  | Beach
@@ -72,13 +73,13 @@ data TerrainType = Port
                  | Town
                  | Village
                  | Clear
-                   deriving (Eq, Show, Read)
+                   deriving (Eq, Show, Read, G.Data, G.Typeable)
                    
 data Zone = Zone { zoneName              :: Name, 
                    zoneControl           :: Control, 
                    zoneTerrainAttributes :: [TerrainType], 
                    zoneScape             :: Landscape }
-          deriving (Eq, Show, Read)
+          deriving (Eq, Show, Read, G.Data, G.Typeable)
 
 type HasRoad = Bool
 

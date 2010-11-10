@@ -1,3 +1,4 @@
+{-# LANGUAGE MultiParamTypeClasses, TypeFamilies, DeriveDataTypeable #-}
 -- |Contain game rules regulating movement
 -- See section 6 of Crete 1941 rulebook
 module MovementRules(module Common,
@@ -10,20 +11,24 @@ module MovementRules(module Common,
 import Common
 import Units
 import Terrain
+import Orders
 import Control.Applicative(Applicative, (<$>))
 import Control.Monad.State
+import qualified Data.Generics as G
 
-class Order o where
-  execute :: (BattleMap t) => o -> Battle t o
-  
 data Move = Move { movedUnit :: Unit,
                    fromZone  :: Zone,
                    toZone    :: Zone,
                    costs     :: Int }
-            deriving (Eq, Show, Read)
+          | NoMove
+          deriving (Eq, Show, Read, 
+                    G.Data, G.Typeable -- ^Move needs to be serializable
+                   )
                      
 instance Order Move where
+  type Result Move = Move
   execute m@(Move u from to c) = updateMovedUnit u to >> return m
+  execute m                    = return m
 
 -- |Moves a unit to the given named zone.
 -- This function updates the terrain so that the unit's location
@@ -53,8 +58,8 @@ tryMovingUnit :: (BattleMap t) => Unit -> Zone -> Zone -> Battle t Move
 tryMovingUnit u from to = do t <- get 
                              let cost = movementCost u from to t
                              return $ case cost of 
-                               Nothing -> Move u from from 0
-                               Just v  -> if moveCapacity u >= v then Move (unitMovesBy u v) from to v else  Move u from from 0
+                               Nothing -> NoMove
+                               Just v  -> if moveCapacity u >= v then Move (unitMovesBy u v) from to v else  NoMove
                                                          
  
 -- |Gives the movement cost for a unit moving from given start zone

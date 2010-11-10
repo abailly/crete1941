@@ -68,10 +68,10 @@ executeCommand Help             = return $ Msg (displayAbout ++ displayHelp)
 executeCommand (MoveUnit un zn) = do t <- get
                                      let (m,t') = (runState . runBattle) (move un zn) t
                                      put t'
-                                     return $ if (zoneName . toZone) m == zn then
-                                                UnitMoved un zn
-                                              else
-                                                MoveProhibited un zn
+                                     return $ 
+                                       case m of
+                                         NoMove -> MoveProhibited un zn
+                                         _      -> UnitMoved un zn
 
 displayAbout = ["Crete 1941, A Wargame Simulating German Air Assault on Crete",
                 "Game Design by Vae Victis (1998), coded by Arnaud Bailly (2010)"]

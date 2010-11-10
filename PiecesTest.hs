@@ -104,17 +104,19 @@ combatRules = "combat rules" ~: test [
   
   given "one unit tries to attack a defender" [
     "when units are not in same zone, assault is prohibited" `for`
-    ((evalState.runBattle) (tryAssault "I/100 Rgt" "NZ 22nd Bat") terrain) ~?= Nothing,
-    "when units are not in same zone, fire is permited" `for`
-    ((evalState.runBattle) (tryFire    "I/100 Rgt" "NZ 22nd Bat") terrain) ~?= Just (germanI100,[],beach,nz22ndBat,[],rethymnon),
-    "when zonez are not adjacent, fire is prohibited" `for`
-    ((evalState.runBattle) (tryFire    "I/100 Rgt" "NZ 21st Bat") terrain) ~?= Nothing,
+    combat (tryAssault "I/100 Rgt" "NZ 22nd Bat") ~?= Nothing,
+    "when units are in adjacent zones, fire is permited" `for`
+    combat (tryFire    "I/100 Rgt" "NZ 22nd Bat") ~?= Just (germanI100,[],beach,nz22ndBat,[],rethymnon),
+    "when unit are not in adjacent zones, fire is prohibited" `for`
+    combat (tryFire    "I/100 Rgt" "NZ 21st Bat") ~?= Nothing,
     "when units are in same zone, assault is permitted" `for`
-    ((evalState.runBattle) (tryAssault "II/100 Rgt" "NZ 21st Bat") terrain) ~?= Just (germanII100,[],hilly,nz21stBat,[],hilly),
+    combat (tryAssault "II/100 Rgt" "NZ 21st Bat") ~?= Just (germanII100,[],hilly,nz21stBat,[],hilly),
     "colocated units contribute to attack for" `for`
-    ((evalState.runBattle) (tryAssault "III/100 Rgt" "Greek 1st Reg") terrain) ~?= Just (germanIII100,[gj85Rgt],roadCountry,greek1stRgt,[],roadCountry)
+    combat (tryAssault "III/100 Rgt" "Greek 1st Reg") ~?= Just (germanIII100,[gj85Rgt],roadCountry,greek1stRgt,[],roadCountry)
     ]
   ]
+  where
+    combat = flip (evalState.runBattle) terrain
 
 combatEffect = given "some combat outcome"  [
   "When reducing unit then it halves its attack strength" `for`
