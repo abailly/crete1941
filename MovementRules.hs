@@ -48,7 +48,7 @@ prepareMove :: (BattleMap t) =>
                -> Battle t Move    -- ^Computed Move order that may be executed later on.
 prepareMove uname dest = do terrain <- get
                             src <- whereIs uname
-                            let [from,to] = map (zone terrain) [src, dest]
+                            let [from,to] = map (flip zone terrain) [src, dest]
                             tryMovingUnit (unit uname terrain) from to 
                             
 -- |Try moving a unit from a start to a destination zone.

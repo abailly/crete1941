@@ -30,6 +30,8 @@ combat :: (BattleMap t)
           -> Battle t [CombatOutcome] -- ^Combat order issued
 combat aname dname  = engage aname dname >>= execute
 
+-- |Engage one unit against another.
+-- Returns a combat order that can potentially be executed to produce a combat outcome (see combat).
 engage :: (BattleMap t) 
           => Name            -- ^Attacking Unit
           -> Name            -- ^Defending Unit
@@ -53,7 +55,7 @@ tryAssault attName defName  =  do t <- get
                                   let allies = filter (\u -> (unitSide u == unitSide attacker) && (u /= attacker)) $ map (flip unit t) $ unitsIn t azone
                                   dzone <- whereIs defName
                                   return $ if azone == dzone 
-                                           then Just (attacker,allies,zone t azone,unit defName t,[],zone t dzone)
+                                           then Just (attacker,allies,zone azone t,unit defName t,[],zone dzone t)
                                            else Nothing
 
 tryFire :: (BattleMap t) => Name -> Name -> Battle t (Maybe (Unit,[Unit],Zone,Unit,[Unit],Zone))
@@ -61,7 +63,7 @@ tryFire attName defName  = do t <- get
                               azone <- whereIs attName
                               dzone <- whereIs defName
                               return $ if adjacent t azone dzone 
-                                       then Just (unit attName t,[],zone t azone,unit defName t,[],zone t dzone)
+                                       then Just (unit attName t,[],zone azone t,unit defName t,[],zone dzone t)
                                        else Nothing
 
 type Force = (Unit,   -- Main attacking unit
@@ -89,9 +91,13 @@ instance Show CombatOutcome where
 -- |Apply CombatOutcome
 combatOutcome :: (BattleMap t) => CombatOutcome -> Battle t CombatOutcome
 combatOutcome o@(Reduce u) 
-  | unitState u == Reduced  = eliminate u >> return o 
+  | unitState u == Reduced  = eliminate u >> return (Eliminate u) 
   | otherwise               = updateStatusOf (reduce u) >> return o
 combatOutcome o@(Eliminate u) = eliminate u >> return o 
+combatOutcome o@(Retreat u)   = do t <- get
+                                   zn <- whereIs (unitName u)
+                                   z <- zoneDataFor (head $ adjacentZones t zn)
+                                   updateMovedUnit u z >> return o 
 
 
 -- |Reduce a unit to half its strength

@@ -12,10 +12,12 @@ class Terrain t where
   -- @return Nothing if the two zones are not connected, Just False if they are connected,
   -- Just True if they are connected by road.
   connection  :: t -> Name -> Name -> Maybe Bool
+  -- | List all zones adjacent to a given zone.
+  adjacentZones :: t -> Name -> [Name] 
   -- | Gives the current location of the given named unit within the terrain
   unitLocation :: Name  -> t -> Name
   -- | Gives the zone data associated with given name
-  zone  :: t -> Name -> Zone
+  zone  :: Name -> t -> Zone
   -- | Gives the names of unit located in some zone
   unitsIn  :: t -> Name -> [Name]
   -- | Gives the unit data associated with given name

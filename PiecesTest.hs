@@ -141,7 +141,11 @@ combatEffect = given "some combat outcome"  [
   "When reducing unit then it set its state to reduced" `for`
   unitState (unit "I/100 Rgt" $ runCombat (Reduce germanI100))  ~?= Reduced,
   "When reducing reduced unit then it its eliminated" `for`
-  "I/100 Rgt" `elem` map fst (allUnitStatus $ runCombat (Reduce $ reduce germanI100))  ~?= False
+  "I/100 Rgt" `elem` map fst (allUnitStatus $ runCombat (Reduce $ reduce germanI100))  ~?= False,
+  given "A unit has to retreat" [
+    "it moves to an adjacent zone" `for`
+    (unitLocation "I/100 Rgt" $ runCombat (Retreat germanI100))  ~?= "Rethymnon"    
+    ]
   ]
   where
     runCombat = flip (execState.runBattle) terrain . combatOutcome

@@ -16,8 +16,11 @@ data Theater = Theater { zoneConnectivity :: [(Name,[(Name,Bool)])],
 
 instance Terrain Theater where
     connection t n1 n2 = (lookup n1 (zoneConnectivity t) >>= lookup n2)
+    adjacentZones t n1 = case lookup n1 (zoneConnectivity t) of 
+                            Just l -> map fst l
+                            Nothing -> []
     unitLocation n t   = fromJust $ M.lookup n (unitLocations t) 
-    zone t name        = fromJust $ M.lookup name (zoneState t)
+    zone name t        = fromJust $ M.lookup name (zoneState t)
     unit n t           = fromJust $ M.lookup n (unitStatus t) 
     allUnitLocations   = M.assocs . unitLocations
     unitsIn t n        = M.keys $ M.filter (== n) (unitLocations t)
@@ -29,6 +32,7 @@ instance BattleMap Theater where
                      S.put $ t { randomStream = tail (random) }
                      return $ head (random)
   whereIs uname = S.get >>= (return . unitLocation uname)
+  zoneDataFor name    = S.get >>= return . zone name
   updateMovedUnit u z = do t <- S.get 
                            S.put $ t { unitLocations = M.adjust (\ _ -> zoneName z) (unitName u) (unitLocations t), 
                                        unitStatus    = M.adjust (\ _ -> u) (unitName u) (unitStatus t)}
