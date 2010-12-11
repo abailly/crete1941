@@ -1,0 +1,1 @@
+An experimental wargame written in Haskell, about the air assault on Crete by German paratroopers in 1941.
