@@ -41,6 +41,8 @@ class (Terrain t) => BattleMap t where
   updateStatusOf :: Unit -> Battle t Unit
   -- | Gives the zone data associated with given name
   zoneDataFor  :: Name -> Battle t Zone
+  -- | Update the zone data associated with given name
+  setZoneDataFor  :: Name -> Zone -> Battle t Zone
   -- | Ensure unit's position is modified.
   updateMovedUnit :: Unit -> Zone -> Battle t Unit
   -- | Get a single dice throw 
@@ -57,9 +59,26 @@ isConnectedByRoadTo t n1 n2 = connection t n1 n2 == Just True
 adjacent :: (Terrain t) => t -> Name -> Name -> Bool
 adjacent t n1 n2 = connection t n1 n2 /= Nothing
      
+
 data Control = Occupied (Either Side ())
              | Unoccupied
           deriving (Eq, Show, Read, G.Data, G.Typeable)
+
+-- |Control Predicates
+
+isBritishControlled z2@(Zone _ (Occupied (Left British)) _ _ ) = True
+isBritishControlled  _                                         = False
+  
+isGermanControlled z2@(Zone _ (Occupied (Left German)) _ _ ) = True
+isGermanControlled  _                                        = False
+  
+isFriendlyTo :: Side -> Zone -> Bool
+isFriendlyTo s (Zone _ (Occupied (Left s')) _ _ ) | s == s' = True
+isFriendlyTo _ (Zone _ (Unoccupied) _ _ )                   = True
+isFriendlyTo _ _                                            = False
+
+isHostileTo :: Side -> Zone -> Bool
+isHostileTo s = not . isFriendlyTo s
 
 data Landscape = Flat
               | Rough

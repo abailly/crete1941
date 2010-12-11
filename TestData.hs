@@ -61,6 +61,7 @@ unitToStatus      = [("Campbell", britishHQ),
                      ("NZ 21st Bat",nz21stBat)]
 zoneToStatus      = [("Rethymnon", rethymnon), 
                      ("Beach", beach), 
+                     ("Rough", roughWithRoad), 
                      ("CountryRoad",roadCountry),
                      ("Country",countryside),
                      ("Hilly",hilly)]
@@ -71,7 +72,8 @@ terrain     = Theater [("Rethymnon",[("Beach", True),
                                      ("CountryRoad", True),
                                      ("Mountain", False),
                                      ("A", False)]),
-                       ("Beach",[("Rethymnon", True)]),
+                       ("Beach",[("Rethymnon", True),
+                                 ("Rough", False)]),
                        ("Hilly",[])]
               (M.fromList unitToLocations) 
               (M.fromList zoneToStatus)

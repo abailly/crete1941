@@ -33,6 +33,9 @@ instance BattleMap Theater where
                      return $ head (random)
   whereIs uname = S.get >>= (return . unitLocation uname)
   zoneDataFor name    = S.get >>= return . zone name
+  setZoneDataFor name z = do t <- S.get 
+                             S.put $ t { zoneState = M.adjust (\ _ -> z) name (zoneState t)}
+                             return z
   updateMovedUnit u z = do t <- S.get 
                            S.put $ t { unitLocations = M.adjust (\ _ -> zoneName z) (unitName u) (unitLocations t), 
                                        unitStatus    = M.adjust (\ _ -> u) (unitName u) (unitStatus t)}

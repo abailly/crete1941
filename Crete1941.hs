@@ -14,17 +14,11 @@ import Commands.Server
 import Control.Concurrent
 
 main = do args <- getArgs
-          case args of
-            ["test"]   -> withSocketsDo $ do mvar <- newEmptyMVar
-                                             startServer terrain (fromIntegral serverPort)  mvar          
-                                             runAllTests 
-                                             putMVar mvar ()
-                                             return ExitSuccess
-            ["server"] -> withSocketsDo $ do mvar <- newEmptyMVar
-                                             startServer terrain (fromIntegral serverPort)  mvar          
-                                             takeMVar mvar
-                                             return ExitSuccess
-            _          -> interpreterLoop terrain
+          withSocketsDo $ do mvar <- newEmptyMVar
+                             startServer terrain (fromIntegral serverPort)  mvar          
+                             runAllTests 
+                             takeMVar mvar
+                             return ExitSuccess
 
 interpreterLoop t =  (execStateT.runCommands) interpret t >>= interpreterLoop
 

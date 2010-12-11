@@ -144,8 +144,12 @@ combatEffect = given "some combat outcome"  [
   "I/100 Rgt" `elem` map fst (allUnitStatus $ runCombat (Reduce $ reduce germanI100))  ~?= False,
   given "A unit has to retreat" [
     "it moves to an adjacent zone" `for`
-    (unitLocation "I/100 Rgt" $ runCombat (Retreat germanI100))  ~?= "Rethymnon"    
+    (unitLocation "I/100 Rgt" $ runCombat (Retreat germanI100))  ~?= "Rethymnon" ,
+    "it moves to the first adjacent friendly zone" `for`
+    (unitLocation "I/100 Rgt" $ exec (setZoneDataFor "Rethymnon" (britishControlled rethymnon) >> 
+                                      combatOutcome (Retreat germanI100)))  ~?= "Rough"
     ]
   ]
   where
-    runCombat = flip (execState.runBattle) terrain . combatOutcome
+    exec = flip (execState.runBattle) terrain
+    runCombat = exec . combatOutcome

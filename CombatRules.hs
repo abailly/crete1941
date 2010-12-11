@@ -96,7 +96,7 @@ combatOutcome o@(Reduce u)
 combatOutcome o@(Eliminate u) = eliminate u >> return o 
 combatOutcome o@(Retreat u)   = do t <- get
                                    zn <- whereIs (unitName u)
-                                   z <- zoneDataFor (head $ adjacentZones t zn)
+                                   let z = head $ filter (isFriendlyTo (unitSide u)) $ map (flip zone t) $ adjacentZones t zn
                                    updateMovedUnit u z >> return o 
 
 
