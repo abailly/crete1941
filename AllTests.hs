@@ -3,6 +3,7 @@ import PiecesTest
 import CliTest
 import IoTest
 import ServerTest
+import LoaderTest
 import IO(stderr)
 import Test.HUnit
 import System.Exit
@@ -18,7 +19,8 @@ tests = T $ test [unitManipulations,
                   combatRules,
                   combatEffect,
                   commandsHandling,
-                  decodeCommandsFromStrings
+                  decodeCommandsFromStrings,
+                  programLoader
 --                 ,interactThroughAnHttpServer
                  ]
 

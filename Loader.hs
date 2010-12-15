@@ -18,6 +18,7 @@ import System
 import qualified Data.Map as M
 import Control.Monad(filterM)
 import System.Time
+import Debug.Trace(trace)
 
 main = do args <- getArgs
           checkChanges ["."] M.empty
@@ -25,12 +26,12 @@ main = do args <- getArgs
 -- |Stores last modified timestamp of the file
 type HashMap = M.Map FilePath ClockTime
 
-data (Eq a) => Edit a = Mod a
-                      | Add a
-                      | Del a
-                      deriving (Eq)
+data (Show a, Eq a) => Edit a = Mod a
+                              | Add a
+                              | Del a
+                      deriving (Eq,Show)
                      
-fromEdit :: (Eq a) => Edit a -> a
+fromEdit :: (Eq a,Show a) => Edit a -> a
 fromEdit (Add e) = e
 fromEdit (Mod e) = e
 formEdit (Del e) = e
@@ -39,13 +40,50 @@ formEdit (Del e) = e
 --  returns the list of files changed.
 checkChanges :: [String] -> HashMap -> IO ([Edit FilePath], HashMap)
 checkChanges [fs] m = do 
-    addedFilesList <- getDirectoryContents fs >>= filterM (doesFileExist) . map (fs </>)
+    addedFilesList <- lsRecursive fs 
     timestamps <- mapM getModificationTime addedFilesList
-    let addedFilesMap = M.fromList $ zip addedFilesList timestamps
-    return (map Add addedFilesList,addedFilesMap)
+    let allts = zip addedFilesList timestamps
+    let ret   = (findDeletedFiles allts.updateScannedFiles allts) ([],m)
+    return ret
+    
+-- | Returns an updated map and a list of modified/added/deleted files
+updateScannedFiles :: [(FilePath,ClockTime)] -> ([Edit FilePath], HashMap) -> ([Edit FilePath], HashMap)
+updateScannedFiles []                r           = r
+updateScannedFiles ((path,ts):files) (updates,m) = 
+  case M.lookup path m of
+    Nothing  -> updateScannedFiles files ((Add path:updates), M.insert path ts m)
+    Just ts' -> if ts' < ts then
+                  updateScannedFiles files ((Mod path:updates), M.adjust (const ts) path m)
+                else
+                  updateScannedFiles files (updates, m)
+  
+ls dir          = do flg <- doesDirectoryExist dir
+                     if flg then getDirectoryContents dir else return []
+      
+findDeletedFiles :: [(FilePath,ClockTime)] -> ([Edit FilePath], HashMap) -> ([Edit FilePath], HashMap)
+findDeletedFiles files (up,m) = 
+  (up ++ map Del (M.keys $ deleted),M.difference m deleted)
+    where deleted = M.difference m (M.fromList files)
+          
+lsRecursive :: FilePath -> IO [FilePath]
+lsRecursive dir = do subs <- ls dir
+                     (files, dirs) <- partitionM (doesFileExist) (map (dir </>) (filter (\x -> (x /= ".") && (x /= "..")) subs))
+                     subfiles <- mapM lsRecursive (dirs)
+                     return $ map (dir </>) files ++ concat subfiles
+
+partitionM :: (Monad m) => (a -> m Bool) -> [a] -> m ([a],[a])
+partitionM _    []     = return ([],[])
+partitionM pred (x:xs) = do flag <- pred x 
+                            (ins,outs) <- partitionM pred xs
+                            return (if flag then (x:ins,outs) else (ins,x:outs))
 
 modified :: [Edit FilePath] -> [FilePath]
-modified _ = []
+modified (Mod f:files) = f:modified files
+modified [] = []
+
+deleted  :: [Edit FilePath] -> [FilePath]
+deleted [] = []
+deleted  (Del f:files) = f:deleted files
 
 -- import Network.Gitit.Types
 -- import System.FilePath
