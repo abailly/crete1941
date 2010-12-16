@@ -39,11 +39,12 @@ fromEdit (Mod e) = e
 formEdit (Del e) = e
 
 -- | Kill and relaunch given application
-killAndRelaunch :: HashMap -> FilePath -> String -> [String] -> Maybe ProcessHandle -> IO ()
-killAndRelaunch state root main args maybePid = do
-  (what,state') <- recompile state main root
+killAndRelaunch :: (FilePath -> Bool) ->           -- ^Filter applied to found files, only matching files are monitored
+                   HashMap -> FilePath -> String -> [String] -> Maybe ProcessHandle -> IO ()
+killAndRelaunch filter state root main args maybePid = do
+  (what,state') <- recompile filter state main root
   case what of
-    Nothing       -> threadDelay 5000000 >> killAndRelaunch state' root main args maybePid
+    Nothing       -> threadDelay 5000000 >> killAndRelaunch filter state' root main args maybePid
     Just (ex,out) -> stop maybePid >> 
                      case ex of
                        ExitSuccess -> do
@@ -52,7 +53,7 @@ killAndRelaunch state root main args maybePid = do
                          (_, _, _, pid') <-
                            createProcess (proc (root </> map (replace '.' '/') main) args)
                          putStrLn $ "Process restarted"
-                         killAndRelaunch state' root main args (Just pid')
+                         killAndRelaunch filter state' root main args (Just pid')
                        _           -> putStrLn $ "Failed to recompile process " ++ main ++ ", giving up."
   where
     stop (Just pid) = terminateProcess pid
@@ -64,12 +65,13 @@ replace from to x | x == from = to
   
 -- | Recompile application if there is any change in the underlying
 -- source files.
-recompile :: HashMap  ->       -- ^Stored status of files
+recompile :: (FilePath -> Bool) ->           -- ^Filter applied to found files, only matching files are monitored
+             HashMap  ->       -- ^Stored status of files
              String   ->       -- ^Main module
              FilePath ->       -- ^Root directory to scan changes in
              IO (Maybe (ExitCode,String),HashMap) -- ^If application has been recompiled, log the result, otherwise Nothing
-recompile state mainModuleName rootDirectory = do
-  (changes,state') <- checkChanges [rootDirectory] state
+recompile filter state mainModuleName rootDirectory = do
+  (changes,state') <- checkChanges filter [rootDirectory] state
   if changes /= [] then  
     doRecompile mainModuleName rootDirectory >>= \log -> return (Just log, state')  
     else    
@@ -99,10 +101,12 @@ doRecompile mainModule rootDirectory = do
 
 -- |Expects as argument a list of file path roots to scan for changes,
 --  returns the list of files changed.
-checkChanges :: [String] -> HashMap -> IO ([Edit FilePath], HashMap)
-checkChanges [fs] m = do 
-    addedFilesList <- lsRecursive fs 
-    putStrLn (show addedFilesList)
+checkChanges :: (FilePath -> Bool) ->           -- ^Filter applied to found files, only matching files are monitored
+                [String] ->                     -- ^List of root directories to monitor
+                HashMap ->                      -- ^Previous state of files 
+                IO ([Edit FilePath], HashMap)   -- ^List of changes found and updated state
+checkChanges flt [fs] m = do 
+    addedFilesList <- lsRecursive flt fs 
     timestamps <- mapM getModificationTime addedFilesList
     let allts = zip addedFilesList timestamps
     let ret   = (findDeletedFiles allts.updateScannedFiles allts) ([],m)
@@ -127,11 +131,11 @@ findDeletedFiles files (up,m) =
 ls dir          = do flg <- doesDirectoryExist dir
                      if flg then getDirectoryContents dir else return []
       
-lsRecursive :: FilePath -> IO [FilePath]
-lsRecursive dir = do subs <- ls dir
-                     (files, dirs) <- partitionM (doesFileExist) (map (dir </>) (filter (\x -> (x /= ".") && (x /= "..")) subs))
-                     subfiles <- mapM lsRecursive (dirs)
-                     return $ files ++ concat subfiles
+lsRecursive :: (FilePath -> Bool) -> FilePath -> IO [FilePath]
+lsRecursive flt dir = do subs <- ls dir
+                         (files, dirs) <- partitionM doesFileExist (map (dir </>) (filter (\x -> (x /= ".") && (x /= "..")) subs))
+                         subfiles <- mapM (lsRecursive flt) (filter flt dirs)
+                         return $ filter flt files ++ concat subfiles
 
 partitionM :: (Monad m) => (a -> m Bool) -> [a] -> m ([a],[a])
 partitionM _    []     = return ([],[])

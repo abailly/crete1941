@@ -25,5 +25,6 @@ main = do args <- getArgs
                                            takeMVar mvar
                                            return ExitSuccess
 
+-- main loop
 interpreterLoop t =  (execStateT.runCommands) interpret t >>= interpreterLoop
 
