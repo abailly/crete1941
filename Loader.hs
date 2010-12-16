@@ -16,6 +16,7 @@ import System.Directory
 import System.FilePath
 import System
 import System.IO
+import System.IO.Error(catch)
 import System.Process
 import System.Exit
 import Control.Exception
@@ -56,7 +57,7 @@ killAndRelaunch filter state root main args maybePid = do
                          killAndRelaunch filter state' root main args (Just pid')
                        _           -> putStrLn $ "Failed to recompile process " ++ main ++ ", giving up."
   where
-    stop (Just pid) = terminateProcess pid
+    stop (Just pid) = System.IO.Error.catch (terminateProcess pid) (\ e -> putStrLn ("Cannot terminate process: " ++ (show e) ++ ", contnuing....") >> return ())
     stop Nothing    = return ()
     
 replace :: (Eq a) => a -> a -> a -> a
