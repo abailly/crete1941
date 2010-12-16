@@ -27,26 +27,26 @@ prepareTempDir = do
   createTempDir 
   return tmp
 
-aFile = writeFile (tmp </> "aFile.txt")  "this is a test"
-bFile = writeFile (tmp </> "bFile.txt")  "this is a test" 
+aFile tmp = writeFile (tmp </> "aFile.txt")  "this is a test"
+bFile tmp = writeFile (tmp </> "bFile.txt")  "this is a test" 
 
 -- | Setup a FS for scanning changes
 simpleFileSetup :: IO ()
 simpleFileSetup = do 
   tmp <- prepareTempDir 
-  aFile 
+  aFile tmp
 
 multiExtensionFileSetup :: IO ()
 multiExtensionFileSetup = do 
   tmp <- prepareTempDir 
-  aFile 
+  aFile tmp
   writeFile (tmp </> "aFile.html")  "this is a test" 
 
 complexFileSetup :: IO ()
 complexFileSetup = do 
   tmp <- prepareTempDir
-  aFile 
-  bFile  
+  aFile tmp
+  bFile tmp
   let sub = (tmp </> "subdir")
   createDirectory sub
   writeFile (sub </> "cFile.txt")  "this is a toast"

@@ -10,3 +10,6 @@ target/
 *.a
 dist/
 *.exe
+*.html
+*.tix
+.hpc
