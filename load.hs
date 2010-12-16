@@ -4,7 +4,8 @@ import qualified Data.Map as M
 import Data.List(isSuffixOf)
 
 main = do (timeout:root:main:rest) <- getArgs
-          killAndRelaunch excludedFiles (read timeout :: Int) M.empty root main rest Nothing
+          let c = mkReloaderConfig excludedFiles main root rest 
+          killAndRelaunch c {reloadDelay = read timeout } Nothing
             where
               excludedFiles f = not $ isSuffixOf ".git" f
 

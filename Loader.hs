@@ -39,26 +39,39 @@ fromEdit (Add e) = e
 fromEdit (Mod e) = e
 formEdit (Del e) = e
 
+-- |Reloader configuration and current status for monitoring one application
+data HotReloader = HotReloader {
+  loaderFilter    ::  (FilePath -> Bool),  -- ^Filter applied to found files, only matching files are monitored
+  reloadDelay     :: Int,                  -- ^Delay between each reloading attempt, in microseconds
+  rootDirectory   :: FilePath,             -- ^Root directory to monitor
+  mainModule      :: String,               -- ^Main module (maybe in dotted or slash notation)
+  mainArgs        :: [String],             -- ^Main program arguments
+  scanStatus      :: HashMap               -- ^Status of scanned files 
+  }
+                    
+mkReloaderConfig :: (FilePath -> Bool) -> String -> FilePath -> [String] -> 
+                    HotReloader
+mkReloaderConfig flt main root args = HotReloader flt 5000000 root main args M.empty
+
 -- | Kill and relaunch given application
-killAndRelaunch :: (FilePath -> Bool) ->           -- ^Filter applied to found files, only matching files are monitored
-                   Int                ->  -- ^Timeout in microseconds
-                   HashMap -> FilePath -> String -> [String] -> Maybe ProcessHandle -> IO ()
-killAndRelaunch filter timeout state root main args maybePid = do
-  (what,state') <- recompile filter state main root
+killAndRelaunch :: HotReloader -> Maybe ProcessHandle -> IO ()
+killAndRelaunch c maybePid = do
+  (what,state') <- recompile c
+  let c' = c { scanStatus = state' } 
   case what of
-    Nothing       -> threadDelay timeout >> killAndRelaunch filter timeout  state' root main args maybePid
+    Nothing       -> threadDelay (reloadDelay c)  >> killAndRelaunch c' maybePid
     Just (ex,out) -> stop maybePid >> 
                      case ex of
                        ExitSuccess -> do
                          putStrLn out
-                         putStrLn $ "Process " ++ main  ++ " succcesfully recompiled, restarting..."
+                         putStrLn $ "Process " ++ (mainModule c)  ++ " succcesfully recompiled, restarting..."
                          (_, _, _, pid') <-
-                           createProcess (proc (root </> map (replace '.' '/') main) args)
+                           createProcess (proc (rootDirectory c </> map (replace '.' '/') (mainModule c)) (mainArgs c))
                          putStrLn $ "Process restarted"
-                         killAndRelaunch filter timeout state' root main args (Just pid')
+                         killAndRelaunch c' (Just pid')
                        _           -> do 
-                         putStrLn $ "Failed to recompile process " ++ main ++ ", giving up.\n" ++ out
-                         killAndRelaunch filter timeout state' root main args Nothing
+                         putStrLn $ "Failed to recompile process " ++ (mainModule c) ++ ", giving up.\n" ++ out
+                         killAndRelaunch c' Nothing
   where
     stop (Just pid) = System.IO.Error.catch (terminateProcess pid) (\ e -> putStrLn ("Cannot terminate process: " ++ (show e) ++ ", contnuing....") >> return ())
     stop Nothing    = return ()
@@ -69,15 +82,12 @@ replace from to x | x == from = to
   
 -- | Recompile application if there is any change in the underlying
 -- source files.
-recompile :: (FilePath -> Bool) ->           -- ^Filter applied to found files, only matching files are monitored
-             HashMap  ->       -- ^Stored status of files
-             String   ->       -- ^Main module
-             FilePath ->       -- ^Root directory to scan changes in
+recompile :: HotReloader ->       -- ^Root directory to scan changes in
              IO (Maybe (ExitCode,String),HashMap) -- ^If application has been recompiled, log the result, otherwise Nothing
-recompile filter state mainModuleName rootDirectory = do
-  (changes,state') <- checkChanges filter [rootDirectory] state
+recompile c = do
+  (changes,state') <- checkChanges (loaderFilter c) [(rootDirectory c)] (scanStatus c)
   if changes /= [] then  
-    doRecompile mainModuleName rootDirectory >>= \log -> return (Just log, state')  
+    doRecompile (mainModule c) (rootDirectory c) >>= \log -> return (Just log, state')  
     else    
     return (Nothing, state')
     

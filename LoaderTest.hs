@@ -8,6 +8,7 @@ import System.Exit
 import IO(bracket)
 import qualified Data.Map as M
 import Control.Monad(when)
+import Control.Concurrent(threadDelay)
 import Loader
 import TestUtilities(for,should,with, given)
 import Data.List(isSuffixOf)
@@ -64,6 +65,8 @@ excludeDotHtml = not . isSuffixOf ".html"
 
 true x = True
 
+testConfig root = mkReloaderConfig true "SomeModule.SomeApp" root []
+
 programLoader = test [
   "When loader starts it" `should` [
   "displays all files as added" `for`
@@ -83,6 +86,7 @@ programLoader = test [
     do complexFileSetup
        root <- tempDir
        state <- checkChanges true [root] M.empty
+       threadDelay 500000
        writeFile (root </> "aFile.txt")  "this is another test"        
        checkChanges true [root] (snd state)
     >>= (\r -> assertEqual "there should be 1 changed file in 3 files" 1 ((length.modified.fst) r)),
@@ -90,6 +94,7 @@ programLoader = test [
     do complexFileSetup
        root <- tempDir
        state <- checkChanges true [root] M.empty
+       threadDelay 500000
        writeFile (root </> "subdir" </> "cFile.txt")  "this is another toast"        
        checkChanges true [root] (snd state)
     >>= (\r -> assertEqual "there should be 1 changed file in 3 files" 1 ((length.modified.fst) r)),
@@ -105,17 +110,18 @@ programLoader = test [
     "compiles main file" `for`
     do sourceTreeSetup
        root <- tempDir
-       (Just out,_) <- recompile true M.empty "SomeModule.SomeApp" root
+       (Just out,_) <- recompile $ testConfig root
        return out
     >>= \(ex,s) -> assertEqual "build should succeed" ExitSuccess ex,
     "does not recompile main file if nothing changes" `for`
     do sourceTreeSetup
        root <- tempDir
+       let c = testConfig root
        -- we need to do it 3 times because after first compilation, new files are 
        -- created (.o and .hi) which are detected as changes
-       (_,s) <- recompile true M.empty "SomeModule.SomeApp" root
-       (_,s') <- recompile true s "SomeModule.SomeApp" root
-       recompile true s' "SomeModule.SomeApp" root
+       (_,s) <- recompile c
+       (_,s') <- recompile c {scanStatus = s} 
+       recompile  c {scanStatus = s'}
     >>= \(ex,s) -> assertEqual "nothing should be built" Nothing ex
 
     ]
