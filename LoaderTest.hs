@@ -27,23 +27,26 @@ prepareTempDir = do
   createTempDir 
   return tmp
 
+aFile = writeFile (tmp </> "aFile.txt")  "this is a test"
+bFile = writeFile (tmp </> "bFile.txt")  "this is a test" 
+
 -- | Setup a FS for scanning changes
 simpleFileSetup :: IO ()
 simpleFileSetup = do 
   tmp <- prepareTempDir 
-  writeFile (tmp </> "aFile.txt")  "this is a test" 
+  aFile 
 
 multiExtensionFileSetup :: IO ()
 multiExtensionFileSetup = do 
   tmp <- prepareTempDir 
-  writeFile (tmp </> "aFile.txt")  "this is a test" 
+  aFile 
   writeFile (tmp </> "aFile.html")  "this is a test" 
 
 complexFileSetup :: IO ()
 complexFileSetup = do 
   tmp <- prepareTempDir
-  writeFile (tmp </> "aFile.txt")  "this is a test" 
-  writeFile (tmp </> "bFile.txt")  "this is a test" 
+  aFile 
+  bFile  
   let sub = (tmp </> "subdir")
   createDirectory sub
   writeFile (sub </> "cFile.txt")  "this is a toast"
@@ -57,7 +60,7 @@ sourceTreeSetup = do
   writeFile (sub </> "SomeLib.hs")  "module SomeModule.SomeLib where toto = \"tata\"" 
   
 excludeDotHtml :: FilePath -> Bool
-excludeDotHtml = isSuffixOf ".html"
+excludeDotHtml = not . isSuffixOf ".html"
 
 true x = True
 

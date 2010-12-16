@@ -41,11 +41,12 @@ formEdit (Del e) = e
 
 -- | Kill and relaunch given application
 killAndRelaunch :: (FilePath -> Bool) ->           -- ^Filter applied to found files, only matching files are monitored
+                   Int                ->  -- ^Timeout in microseconds
                    HashMap -> FilePath -> String -> [String] -> Maybe ProcessHandle -> IO ()
-killAndRelaunch filter state root main args maybePid = do
+killAndRelaunch filter timeout state root main args maybePid = do
   (what,state') <- recompile filter state main root
   case what of
-    Nothing       -> threadDelay 5000000 >> killAndRelaunch filter state' root main args maybePid
+    Nothing       -> threadDelay timeout >> killAndRelaunch filter timeout  state' root main args maybePid
     Just (ex,out) -> stop maybePid >> 
                      case ex of
                        ExitSuccess -> do
@@ -54,8 +55,10 @@ killAndRelaunch filter state root main args maybePid = do
                          (_, _, _, pid') <-
                            createProcess (proc (root </> map (replace '.' '/') main) args)
                          putStrLn $ "Process restarted"
-                         killAndRelaunch filter state' root main args (Just pid')
-                       _           -> putStrLn $ "Failed to recompile process " ++ main ++ ", giving up."
+                         killAndRelaunch filter timeout state' root main args (Just pid')
+                       _           -> do 
+                         putStrLn $ "Failed to recompile process " ++ main ++ ", giving up.\n" ++ out
+                         killAndRelaunch filter timeout state' root main args Nothing
   where
     stop (Just pid) = System.IO.Error.catch (terminateProcess pid) (\ e -> putStrLn ("Cannot terminate process: " ++ (show e) ++ ", contnuing....") >> return ())
     stop Nothing    = return ()
