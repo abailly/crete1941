@@ -4,6 +4,7 @@ import Test.QuickCheck
 import System.Directory
 import System.FilePath
 import System.IO
+import System.Exit
 import IO(bracket)
 import qualified Data.Map as M
 import Control.Monad(when)
@@ -20,24 +21,35 @@ deleteIfExists path = do exists <- doesDirectoryExist path
 
 createTempDir = tempDir >>= createDirectory 
 
--- | Setup a FS for scanning changes
-simpleFileSetup :: IO ()
-simpleFileSetup = do 
+prepareTempDir = do 
   tmp <- tempDir 
   deleteIfExists tmp
   createTempDir 
+  return tmp
+
+-- | Setup a FS for scanning changes
+simpleFileSetup :: IO ()
+simpleFileSetup = do 
+  tmp <- prepareTempDir 
   writeFile (tmp </> "aFile.txt")  "this is a test" 
 
 complexFileSetup :: IO ()
 complexFileSetup = do 
-  tmp <- tempDir 
-  deleteIfExists tmp
-  createTempDir 
+  tmp <- prepareTempDir
   writeFile (tmp </> "aFile.txt")  "this is a test" 
   writeFile (tmp </> "bFile.txt")  "this is a test" 
   let sub = (tmp </> "subdir")
   createDirectory sub
   writeFile (sub </> "cFile.txt")  "this is a toast"
+
+sourceTreeSetup :: IO ()
+sourceTreeSetup = do
+  tmp <- prepareTempDir 
+  let sub = (tmp </> "SomeModule")
+  createDirectory sub
+  writeFile (sub </> "SomeApp.hs")  "module SomeModule.SomeApp where { import SomeModule.SomeLib; main = putStrLn toto }" 
+  writeFile (sub </> "SomeLib.hs")  "module SomeModule.SomeLib where toto = \"tata\"" 
+  
 
 programLoader = test [
   "When loader starts it" `should` [
@@ -69,5 +81,23 @@ programLoader = test [
        removeFile (root </> "subdir" </> "cFile.txt")
        checkChanges [root] (snd state)
     >>= (\(l,m) -> assertEqual "there should be 1 deleted file in 3 files" 1 ((length.deleted) l))
+    ],
+  "when monitoring a directory it" `should` [
+    "compiles main file" `for`
+    do sourceTreeSetup
+       root <- tempDir
+       (Just out,_) <- recompile M.empty "SomeModule.SomeApp" root
+       return out
+    >>= \(ex,s) -> assertEqual "build should succeed" ExitSuccess ex,
+    "does not recompile main file if nothing changes" `for`
+    do sourceTreeSetup
+       root <- tempDir
+       -- we need to do it 3 times because after first compilation, new files are 
+       -- created (.o and .hi) which are detected as changes
+       (_,s) <- recompile M.empty "SomeModule.SomeApp" root
+       (_,s') <- recompile s "SomeModule.SomeApp" root
+       recompile s' "SomeModule.SomeApp" root
+    >>= \(ex,s) -> assertEqual "nothing should be built" Nothing ex
+
     ]
   ]

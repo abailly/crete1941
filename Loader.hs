@@ -15,14 +15,16 @@ module Loader where
 import System.Directory
 import System.FilePath
 import System
+import System.IO
+import System.Process
+import System.Exit
+import Control.Exception
+import Control.Concurrent
 import qualified Data.Map as M
 import Control.Monad(filterM)
 import System.Time
 import Debug.Trace(trace)
 
-main = do args <- getArgs
-          checkChanges ["."] M.empty
-          
 -- |Stores last modified timestamp of the file
 type HashMap = M.Map FilePath ClockTime
 
@@ -36,11 +38,71 @@ fromEdit (Add e) = e
 fromEdit (Mod e) = e
 formEdit (Del e) = e
 
+-- | Kill and relaunch given application
+killAndRelaunch :: HashMap -> FilePath -> String -> [String] -> Maybe ProcessHandle -> IO ()
+killAndRelaunch state root main args maybePid = do
+  (what,state') <- recompile state main root
+  case what of
+    Nothing       -> threadDelay 5000000 >> killAndRelaunch state' root main args maybePid
+    Just (ex,out) -> stop maybePid >> 
+                     case ex of
+                       ExitSuccess -> do
+                         putStrLn out
+                         putStrLn $ "Process " ++ main  ++ " succcesfully recompiled, restarting..."
+                         (_, _, _, pid') <-
+                           createProcess (proc (root </> map (replace '.' '/') main) args)
+                         putStrLn $ "Process restarted"
+                         killAndRelaunch state' root main args (Just pid')
+                       _           -> putStrLn $ "Failed to recompile process " ++ main ++ ", giving up."
+  where
+    stop (Just pid) = terminateProcess pid
+    stop Nothing    = return ()
+    
+replace :: (Eq a) => a -> a -> a -> a
+replace from to x | x == from = to
+                  | otherwise = x
+  
+-- | Recompile application if there is any change in the underlying
+-- source files.
+recompile :: HashMap  ->       -- ^Stored status of files
+             String   ->       -- ^Main module
+             FilePath ->       -- ^Root directory to scan changes in
+             IO (Maybe (ExitCode,String),HashMap) -- ^If application has been recompiled, log the result, otherwise Nothing
+recompile state mainModuleName rootDirectory = do
+  (changes,state') <- checkChanges [rootDirectory] state
+  if changes /= [] then  
+    doRecompile mainModuleName rootDirectory >>= \log -> return (Just log, state')  
+    else    
+    return (Nothing, state')
+    
+doRecompile :: String -> FilePath -> IO (ExitCode,String)
+doRecompile mainModule rootDirectory = do
+  (_, Just outh, Just errh, pid) <-
+       createProcess (proc "D:/Program Files/Haskell Platform/2010.2.0.0/bin/ghc.exe" 
+                      ["--make", "-threaded", mainModule]) { cwd = Just rootDirectory,
+                                                             std_out = CreatePipe, 
+                                                             std_err = CreatePipe}
+  outMVar <- newEmptyMVar
+  
+  -- fork off a thread to start consuming stdout
+  out  <- hGetContents outh
+  _ <- forkIO $ evaluate (length out) >> putMVar outMVar ()
+  
+  err  <- hGetContents errh
+  _ <- forkIO $ evaluate (length err) >> putMVar outMVar ()
+  takeMVar outMVar
+  takeMVar outMVar
+  hClose outh
+  -- wait on the process
+  ex <- waitForProcess pid
+  return (ex,out ++ err)
+
 -- |Expects as argument a list of file path roots to scan for changes,
 --  returns the list of files changed.
 checkChanges :: [String] -> HashMap -> IO ([Edit FilePath], HashMap)
 checkChanges [fs] m = do 
     addedFilesList <- lsRecursive fs 
+    putStrLn (show addedFilesList)
     timestamps <- mapM getModificationTime addedFilesList
     let allts = zip addedFilesList timestamps
     let ret   = (findDeletedFiles allts.updateScannedFiles allts) ([],m)
@@ -56,20 +118,20 @@ updateScannedFiles ((path,ts):files) (updates,m) =
                   updateScannedFiles files ((Mod path:updates), M.adjust (const ts) path m)
                 else
                   updateScannedFiles files (updates, m)
-  
-ls dir          = do flg <- doesDirectoryExist dir
-                     if flg then getDirectoryContents dir else return []
-      
+
 findDeletedFiles :: [(FilePath,ClockTime)] -> ([Edit FilePath], HashMap) -> ([Edit FilePath], HashMap)
 findDeletedFiles files (up,m) = 
   (up ++ map Del (M.keys $ deleted),M.difference m deleted)
     where deleted = M.difference m (M.fromList files)
           
+ls dir          = do flg <- doesDirectoryExist dir
+                     if flg then getDirectoryContents dir else return []
+      
 lsRecursive :: FilePath -> IO [FilePath]
 lsRecursive dir = do subs <- ls dir
                      (files, dirs) <- partitionM (doesFileExist) (map (dir </>) (filter (\x -> (x /= ".") && (x /= "..")) subs))
                      subfiles <- mapM lsRecursive (dirs)
-                     return $ map (dir </>) files ++ concat subfiles
+                     return $ files ++ concat subfiles
 
 partitionM :: (Monad m) => (a -> m Bool) -> [a] -> m ([a],[a])
 partitionM _    []     = return ([],[])
@@ -121,7 +183,7 @@ deleted  (Del f:files) = f:deleted files
 --       setContext [] [m, i, pr]
 --       value <- compileExpr (modName ++ ".plugin :: Plugin")
 --       let value' = (unsafeCoerce value) :: Plugin
---       return value'
+                         --       return value'
 
 
 -- loadPlugin :: FilePath -> IO Plugin
