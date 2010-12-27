@@ -65,7 +65,7 @@ excludeDotHtml = not . isSuffixOf ".html"
 
 true x = True
 
-testConfig root = mkReloaderConfig true "SomeModule.SomeApp" root []
+testConfig root = mkReloaderConfig true "SomeModule.SomeApp" root [] 10
 
 programLoader = test [
   "When loader starts it" `should` [

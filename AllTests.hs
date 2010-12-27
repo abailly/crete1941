@@ -4,6 +4,7 @@ import CliTest
 import IoTest
 import ServerTest
 import LoaderTest
+import NetworkTest
 import IO(stderr)
 import Test.HUnit
 import System.Exit
@@ -20,7 +21,8 @@ tests = T $ test [unitManipulations,
                   combatEffect,
                   commandsHandling,
                   decodeCommandsFromStrings,
-                  programLoader
+                  programLoader,
+                  processesCommunication
 --                 ,interactThroughAnHttpServer
                  ]
 

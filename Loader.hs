@@ -46,18 +46,20 @@ data HotReloader = HotReloader {
   rootDirectory   :: FilePath,             -- ^Root directory to monitor
   mainModule      :: String,               -- ^Main module (maybe in dotted or slash notation)
   mainArgs        :: [String],             -- ^Main program arguments
-  scanStatus      :: HashMap               -- ^Status of scanned files 
+  scanStatus      :: HashMap,              -- ^Status of scanned files 
+  runCount        :: Int                   -- ^Stop reloader after this number of runs
   }
                     
-mkReloaderConfig :: (FilePath -> Bool) -> String -> FilePath -> [String] -> 
+mkReloaderConfig :: (FilePath -> Bool) -> String -> FilePath -> [String] -> Int -> 
                     HotReloader
-mkReloaderConfig flt main root args = HotReloader flt 5000000 root main args M.empty
+mkReloaderConfig flt main root args count = HotReloader flt 5000000 root main args M.empty count
 
 -- | Kill and relaunch given application
 killAndRelaunch :: HotReloader -> Maybe ProcessHandle -> IO ()
-killAndRelaunch c maybePid = do
+killAndRelaunch c maybePid | runCount c == 0 = return ()
+killAndRelaunch c maybePid | runCount c /= 0 = do
   (what,state') <- recompile c
-  let c' = c { scanStatus = state' } 
+  let c' = c { scanStatus = state' , runCount = runCount c - 1 } 
   case what of
     Nothing       -> threadDelay (reloadDelay c)  >> killAndRelaunch c' maybePid
     Just (ex,out) -> stop maybePid >> 
@@ -66,14 +68,15 @@ killAndRelaunch c maybePid = do
                          putStrLn out
                          putStrLn $ "Process " ++ (mainModule c)  ++ " succcesfully recompiled, restarting..."
                          (_, _, _, pid') <-
-                           createProcess (proc (rootDirectory c </> map (replace '.' '/') (mainModule c)) (mainArgs c))
+                           createProcess (proc pathToMain ("1234":(mainArgs c)) {cwd = Just $ rootDirectory c })
                          putStrLn $ "Process restarted"
                          killAndRelaunch c' (Just pid')
                        _           -> do 
                          putStrLn $ "Failed to recompile process " ++ (mainModule c) ++ ", giving up.\n" ++ out
                          killAndRelaunch c' Nothing
   where
-    stop (Just pid) = System.IO.Error.catch (terminateProcess pid) (\ e -> putStrLn ("Cannot terminate process: " ++ (show e) ++ ", contnuing....") >> return ())
+    pathToMain = rootDirectory c </> map (replace '.' '/') (mainModule c)
+    stop (Just pid) = System.IO.Error.catch (terminateProcess pid) (\ e -> putStrLn ("Cannot terminate process: '" ++ (show e) ++ "', contnuing....") >> return ())
     stop Nothing    = return ()
     
 replace :: (Eq a) => a -> a -> a -> a
@@ -104,8 +107,11 @@ doRecompile mainModule rootDirectory = do
   out  <- hGetContents outh
   _ <- forkIO $ evaluate (length out) >> putMVar outMVar ()
   
+  -- fork off a thread to start consuming stderr
   err  <- hGetContents errh
   _ <- forkIO $ evaluate (length err) >> putMVar outMVar ()
+  
+  -- wait both threads' end
   takeMVar outMVar
   takeMVar outMVar
   hClose outh
