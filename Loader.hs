@@ -30,6 +30,8 @@ import Control.Monad(filterM)
 import System.Time
 import Debug.Trace(trace)
 
+import Loader.Communication
+
 -- |Stores last modified timestamp of the file
 type HashMap = M.Map FilePath ClockTime
 
@@ -43,6 +45,8 @@ fromEdit (Add e) = e
 fromEdit (Mod e) = e
 formEdit (Del e) = e
 
+defaultLoaderPort = 13579
+
 -- |Reloader configuration and current status for monitoring one application
 data HotReloader = HotReloader {
   loaderFilter    ::  (FilePath -> Bool),  -- ^Filter applied to found files, only matching files are monitored
@@ -51,28 +55,29 @@ data HotReloader = HotReloader {
   mainModule      :: String,               -- ^Main module (maybe in dotted or slash notation)
   mainArgs        :: [String],             -- ^Main program arguments
   scanStatus      :: HashMap,              -- ^Status of scanned files 
-  runCount        :: Int                   -- ^Stop reloader after this number of runs
+  runCount        :: Int,                  -- ^Stop reloader after this number of runs
+  signalPort      :: Int                   -- ^Port supervised process shall be listening to (default to 13579)
   }
                     
 mkReloaderConfig :: (FilePath -> Bool) -> String -> FilePath -> [String] -> Int -> 
                     HotReloader
-mkReloaderConfig flt main root args count = HotReloader flt 5000000 root main args M.empty count
+mkReloaderConfig flt main root args count = HotReloader flt 5000000 root main args M.empty count defaultLoaderPort
 
 -- | Kill and relaunch given application
 killAndRelaunch :: HotReloader -> Maybe ProcessHandle -> IO ()
-killAndRelaunch c maybePid | runCount c == 0 = stopWithPid maybePid
+killAndRelaunch c maybePid | runCount c == 0 = stopWithPid maybePid (signalPort c)
 killAndRelaunch c maybePid | runCount c /= 0 = do
   (what,state') <- recompile c
   let c' = c { scanStatus = state' , runCount = runCount c - 1 } 
   case what of
     Nothing       -> threadDelay (reloadDelay c)  >> killAndRelaunch c' maybePid
-    Just (ex,out) -> stopWithPid maybePid >> 
+    Just (ex,out) -> stopWithPid maybePid (signalPort c') >> 
                      case ex of
                        ExitSuccess -> do
                          putStrLn out
                          putStrLn $ "Process " ++ (mainModule c)  ++ " succcesfully recompiled, restarting..."
                          (_, _, _, pid') <-
-                           createProcess (proc pathToMain ("1234":(mainArgs c))) {cwd = Just $ rootDirectory c }
+                           createProcess (proc pathToMain ((show$signalPort c'):(mainArgs c'))) {cwd = Just $ rootDirectory c' }
                          putStrLn $ "Process restarted"
                          killAndRelaunch c' (Just pid')
                        _           -> do 
@@ -81,18 +86,6 @@ killAndRelaunch c maybePid | runCount c /= 0 = do
   where
     pathToMain = rootDirectory c </> map (replace '.' '/') (mainModule c)
 
-stopWithPid (Just pid) = sendStopSignal pid >> threadDelay 1000000 >> System.IO.Error.catch (terminateProcess pid) (\ e -> putStrLn ("Cannot terminate process: '" ++ (show e) ++ "', contnuing....") >> return ())
-stopWithPid Nothing    = return ()
-    
-sendStopSignal :: ProcessHandle -> IO Int
-sendStopSignal pid = withSocketsDo $ do
-  address <- inet_addr "127.0.0.1"
-  sock <- socket AF_INET Datagram defaultProtocol
-  let addr = SockAddrInet ((fromIntegral 1234) :: PortNumber) address
-  w <- sendTo sock "stop" addr
-  putStrLn $ "written " ++ (show w)
-  return w
-  
 replace :: (Eq a) => a -> a -> a -> a
 replace from to x | x == from = to
                   | otherwise = x

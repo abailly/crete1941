@@ -47,7 +47,7 @@ main = withSocketsDo $ do
   putStrLn $ "listening @" ++ show port
   address <- inet_addr "127.0.0.1"
   sock <- socket AF_INET Datagram defaultProtocol
-  let addr = SockAddrInet ((fromIntegral 1234) :: PortNumber) address
+  let addr = SockAddrInet ((fromIntegral$read port) :: PortNumber) address
   bindSocket sock addr
   putStrLn $ "receiving from " ++ show sock
   (msg, _, addr) <- recvFrom sock 1024
@@ -62,7 +62,7 @@ processesCommunication =
      let testConfig = mkReloaderConfig (\ _ -> True) "listen" root [] 2
      killAndRelaunch testConfig Nothing
      readFile (root </> "out")
-  >>= assertEqual "Expected port number for binding new process" ["1234"] . read,
+  >>= assertEqual "Expected port number for binding new process" [show defaultLoaderPort] . read,
   "send stop signal to supervised process before quitting" `for`
   do supervisedMulticastProcessSetup
      root <- tempDir
