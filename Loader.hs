@@ -19,6 +19,10 @@ import System.IO
 import System.IO.Error(catch)
 import System.Process
 import System.Exit
+
+import Network.Socket
+import Network.Multicast
+
 import Control.Exception
 import Control.Concurrent
 import qualified Data.Map as M
@@ -56,19 +60,19 @@ mkReloaderConfig flt main root args count = HotReloader flt 5000000 root main ar
 
 -- | Kill and relaunch given application
 killAndRelaunch :: HotReloader -> Maybe ProcessHandle -> IO ()
-killAndRelaunch c maybePid | runCount c == 0 = return ()
+killAndRelaunch c maybePid | runCount c == 0 = stopWithPid maybePid
 killAndRelaunch c maybePid | runCount c /= 0 = do
   (what,state') <- recompile c
   let c' = c { scanStatus = state' , runCount = runCount c - 1 } 
   case what of
     Nothing       -> threadDelay (reloadDelay c)  >> killAndRelaunch c' maybePid
-    Just (ex,out) -> stop maybePid >> 
+    Just (ex,out) -> stopWithPid maybePid >> 
                      case ex of
                        ExitSuccess -> do
                          putStrLn out
                          putStrLn $ "Process " ++ (mainModule c)  ++ " succcesfully recompiled, restarting..."
                          (_, _, _, pid') <-
-                           createProcess (proc pathToMain ("1234":(mainArgs c)) {cwd = Just $ rootDirectory c })
+                           createProcess (proc pathToMain ("1234":(mainArgs c))) {cwd = Just $ rootDirectory c }
                          putStrLn $ "Process restarted"
                          killAndRelaunch c' (Just pid')
                        _           -> do 
@@ -76,9 +80,19 @@ killAndRelaunch c maybePid | runCount c /= 0 = do
                          killAndRelaunch c' Nothing
   where
     pathToMain = rootDirectory c </> map (replace '.' '/') (mainModule c)
-    stop (Just pid) = System.IO.Error.catch (terminateProcess pid) (\ e -> putStrLn ("Cannot terminate process: '" ++ (show e) ++ "', contnuing....") >> return ())
-    stop Nothing    = return ()
+
+stopWithPid (Just pid) = sendStopSignal pid >> threadDelay 1000000 >> System.IO.Error.catch (terminateProcess pid) (\ e -> putStrLn ("Cannot terminate process: '" ++ (show e) ++ "', contnuing....") >> return ())
+stopWithPid Nothing    = return ()
     
+sendStopSignal :: ProcessHandle -> IO Int
+sendStopSignal pid = withSocketsDo $ do
+  address <- inet_addr "127.0.0.1"
+  sock <- socket AF_INET Datagram defaultProtocol
+  let addr = SockAddrInet ((fromIntegral 1234) :: PortNumber) address
+  w <- sendTo sock "stop" addr
+  putStrLn $ "written " ++ (show w)
+  return w
+  
 replace :: (Eq a) => a -> a -> a -> a
 replace from to x | x == from = to
                   | otherwise = x
