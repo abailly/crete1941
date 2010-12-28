@@ -92,7 +92,7 @@ replace from to x | x == from = to
   
 -- | Recompile application if there is any change in the underlying
 -- source files.
-recompile :: HotReloader ->       -- ^Root directory to scan changes in
+recompile :: HotReloader ->                       -- ^Root directory to scan changes in
              IO (Maybe (ExitCode,String),HashMap) -- ^If application has been recompiled, log the result, otherwise Nothing
 recompile c = do
   (changes,state') <- checkChanges (loaderFilter c) [(rootDirectory c)] (scanStatus c)
@@ -177,56 +177,4 @@ modified [] = []
 deleted  :: [Edit FilePath] -> [FilePath]
 deleted [] = []
 deleted  (Del f:files) = f:deleted files
-
--- import Network.Gitit.Types
--- import System.FilePath
--- import Control.Monad (unless)
--- import System.Log.Logger (logM, Priority(..))
--- import Data.List (isInfixOf, isPrefixOf)
--- import GHC
--- import GHC.Paths
--- import Unsafe.Coerce
-
--- loadPlugin :: FilePath -> IO Plugin
--- loadPlugin pluginName = do
---   logM "gitit" WARNING ("Loading plugin '" ++ pluginName ++ "'...")
---   runGhc (Just libdir) $ do
---     dflags <- getSessionDynFlags
---     setSessionDynFlags dflags
---     defaultCleanupHandler dflags $ do
---       -- initDynFlags
---       unless ("Network.Gitit.Plugin." `isPrefixOf` pluginName)
---         $ do
---             addTarget =<< guessTarget pluginName Nothing
---             r <- load LoadAllTargets
---             case r of
---               Failed -> error $ "Error loading plugin: " ++ pluginName
---               Succeeded -> return ()
---       let modName =
---             if "Network.Gitit.Plugin" `isPrefixOf` pluginName
---                then pluginName
---                else if "Network/Gitit/Plugin/" `isInfixOf` pluginName
---                        then "Network.Gitit.Plugin." ++ takeBaseName pluginName
---                        else takeBaseName pluginName
---       pr <- findModule (mkModuleName "Prelude") Nothing
---       i <- findModule (mkModuleName "Network.Gitit.Interface") Nothing
---       m <- findModule (mkModuleName modName) Nothing
---       setContext [] [m, i, pr]
---       value <- compileExpr (modName ++ ".plugin :: Plugin")
---       let value' = (unsafeCoerce value) :: Plugin
-                         --       return value'
-
-
--- loadPlugin :: FilePath -> IO Plugin
--- loadPlugin pluginName = do
---   error $ "Cannot load plugin '" ++ pluginName ++
---           "'. gitit was not compiled with plugin support."
---   return undefined
-
-
--- loadPlugins :: [FilePath] -> IO [Plugin]
--- loadPlugins pluginNames = do
---   plugins' <- mapM loadPlugin pluginNames
---   unless (null pluginNames) $ logM "gitit" WARNING "Finished loading plugins."
---   return plugins'
 
