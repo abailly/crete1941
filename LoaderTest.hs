@@ -86,7 +86,7 @@ programLoader = test [
     do complexFileSetup
        root <- tempDir
        state <- checkChanges true [root] M.empty
-       threadDelay 500000
+       threadDelay 1000000
        writeFile (root </> "aFile.txt")  "this is another test"        
        checkChanges true [root] (snd state)
     >>= (\r -> assertEqual "there should be 1 changed file in 3 files" 1 ((length.modified.fst) r)),
@@ -94,7 +94,7 @@ programLoader = test [
     do complexFileSetup
        root <- tempDir
        state <- checkChanges true [root] M.empty
-       threadDelay 500000
+       threadDelay 1000000
        writeFile (root </> "subdir" </> "cFile.txt")  "this is another toast"        
        checkChanges true [root] (snd state)
     >>= (\r -> assertEqual "there should be 1 changed file in 3 files" 1 ((length.modified.fst) r)),

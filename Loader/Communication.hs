@@ -15,7 +15,7 @@ stopWithPid (Just pid) port = sendStopSignal port >>
                               threadDelay 1000000 >> 
                               try (terminateProcess pid) >>=
                               either 
-                                (\ (e :: IOException) -> putStrLn ("Cannot terminate process: '" ++ (show e) ++ "', contnuing....") >> return ())
+                                (\ (e :: IOException) -> putStrLn ("Cannot terminate process: '" ++ (show e) ++ "', continuing....") >> return ())
                                 (\ _ -> return ())
 stopWithPid Nothing    port = return ()
     

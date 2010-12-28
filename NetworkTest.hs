@@ -7,6 +7,7 @@ import System.Directory
 import System.FilePath
 import TestUtilities(for,should,with, given)
 import Control.Monad(when)
+import Control.Exception(try)
 import Loader
 import Loader.Communication 
 
@@ -31,7 +32,6 @@ supervisedProcessSetup = do
 import System
 import System.IO
 main = do args <- getArgs 
-          putStrLn $ "listening " ++ (show args)
           writeFile "out" (show args)
 |]
 
@@ -44,12 +44,10 @@ import Network.Socket
 import Network.Multicast
 main = withSocketsDo $ do 
   [port] <- getArgs 
-  putStrLn $ "listening @" ++ show port
   address <- inet_addr "127.0.0.1"
   sock <- socket AF_INET Datagram defaultProtocol
   let addr = SockAddrInet ((fromIntegral$read port) :: PortNumber) address
   bindSocket sock addr
-  putStrLn $ "receiving from " ++ show sock
   (msg, _, addr) <- recvFrom sock 1024
   writeFile "mcast" (show msg)
 |]
@@ -69,5 +67,10 @@ processesCommunication =
      let testConfig = mkReloaderConfig (\ _ -> True) "listen1" root [] 2
      killAndRelaunch testConfig Nothing
      readFile (root </> "mcast")
-  >>= assertEqual "Expected stop signal" "stop" . read
+  >>= assertEqual "Expected stop signal" "stop" . read,
+  "throws exception if cannot send signal to process" `for`
+  do root <- tempDir
+     let testConfig = mkReloaderConfig (\ _ -> True) "listen2" root [] 2
+     try $ killAndRelaunch testConfig Nothing
+  >>= (\ (Left e) -> assertEqual "Expected error" (userError "some error") e)
   ]

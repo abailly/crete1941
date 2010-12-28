@@ -75,7 +75,7 @@ killAndRelaunch c maybePid | runCount c /= 0 = do
                      case ex of
                        ExitSuccess -> do
                          putStrLn out
-                         putStrLn $ "Process " ++ (mainModule c)  ++ " succcesfully recompiled, restarting..."
+                         putStr $ "Process " ++ (mainModule c)  ++ " succcesfully recompiled, restarting..."
                          (_, _, _, pid') <-
                            createProcess (proc pathToMain ((show$signalPort c'):(mainArgs c'))) {cwd = Just $ rootDirectory c' }
                          putStrLn $ "Process restarted"
