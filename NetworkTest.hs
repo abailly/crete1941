@@ -8,6 +8,7 @@ import System.FilePath
 import TestUtilities(for,should,with, given)
 import Control.Monad(when)
 import Control.Exception(try)
+import Control.Concurrent(threadDelay)
 import Loader
 import Loader.Communication 
 
@@ -67,10 +68,6 @@ processesCommunication =
      let testConfig = mkReloaderConfig (\ _ -> True) "listen1" root [] 2
      killAndRelaunch testConfig Nothing
      readFile (root </> "mcast")
-  >>= assertEqual "Expected stop signal" "stop" . read,
-  "throws exception if cannot send signal to process" `for`
-  do root <- tempDir
-     let testConfig = mkReloaderConfig (\ _ -> True) "listen2" root [] 2
-     try $ killAndRelaunch testConfig Nothing
-  >>= (\ (Left e) -> assertEqual "Expected error" (userError "some error") e)
+  >>= assertEqual "Expected stop signal" "stop" . read
+  
   ]
