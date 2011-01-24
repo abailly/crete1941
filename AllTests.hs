@@ -3,7 +3,7 @@ import PiecesTest
 import CliTest
 import IoTest
 import ServerTest
-import LoaderTest
+--import LoaderTest
 import NetworkTest
 import IO(stderr)
 import Test.HUnit
@@ -15,13 +15,14 @@ newtype Tests = T {unT :: Test}
 
 data TestCount = TestCount Int Test
 
-tests = T $ test [unitManipulations,
-                  movementRules,
-                  combatRules,
-                  combatEffect,
-                  commandsHandling,
-                  decodeCommandsFromStrings,
-                  programLoader,
+tests = T $ test [
+  -- unitManipulations,
+  --                 movementRules,
+  --                 combatRules,
+  --                 combatEffect,
+  --                 commandsHandling,
+  --                 decodeCommandsFromStrings,
+--                  programLoader,
                   processesCommunication
 --                 ,interactThroughAnHttpServer
                  ]

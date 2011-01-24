@@ -9,8 +9,11 @@ import TestUtilities(for,should,with, given)
 import Control.Monad(when)
 import Control.Exception(try)
 import Control.Concurrent(threadDelay)
-import Loader
+import Text.Regex.TDFA
+import Debug.Trace
+
 import Loader.Communication 
+import Loader.Builder
 
 tempDir = getTemporaryDirectory >>= return . (</> "loader-test")
 
@@ -35,6 +38,7 @@ import System.IO
 main = do args <- getArgs 
           writeFile "out" (show args)
 |]
+  doRecompile "listen" tmp
 
 supervisedMulticastProcessSetup = do
   tmp <- prepareTempDir 
@@ -44,30 +48,53 @@ import System.IO
 import Network.Socket
 import Network.Multicast
 main = withSocketsDo $ do 
-  [port] <- getArgs 
-  address <- inet_addr "127.0.0.1"
-  sock <- socket AF_INET Datagram defaultProtocol
+  [host,port] <- getArgs 
+  -- remote host address
+  address <- inet_addr host
   let addr = SockAddrInet ((fromIntegral$read port) :: PortNumber) address
-  bindSocket sock addr
-  (msg, _, addr) <- recvFrom sock 1024
-  writeFile "mcast" (show msg)
+  -- own host address
+  sock <- socket AF_INET Datagram defaultProtocol
+  let ownAddr = SockAddrInet 0 address
+  bindSocket sock ownAddr
+  ownPort <- socketPort sock
+  sendTo sock (show ["127.0.0.1", show ownPort]) addr
 |]
+  doRecompile "listen1" tmp
+
+waitForFile file = waitForFile' file 100
+  where
+    waitForFile' file 0 = doesFileExist file
+    waitForFile' file n = do fileExist <- doesFileExist file
+                             if fileExist then return True else (threadDelay 200000 >> waitForFile' file (n-1))
+
+monitor :: FilePath -> Supervised
+monitor path = Supervised "toto" path "listen" [] Nothing Nothing Nothing
 
 processesCommunication = 
-  "Given 1 supervisor and 1 supervised process, supervisor" `should` [
-  "prepend socket number to bind to supervised process" `for`
+  "Given 1 monitor and 1 supervised process, monitor" `should` [
+    
+  "prepend own host:port to supervised process" `for`
   do supervisedProcessSetup
      root <- tempDir
-     let testConfig = mkReloaderConfig (\ _ -> True) "listen" root [] 2
-     killAndRelaunch testConfig Nothing
-     readFile (root </> "out")
-  >>= assertEqual "Expected port number for binding new process" [show defaultLoaderPort] . read,
-  "send stop signal to supervised process before quitting" `for`
+     sup <- supervisor 13570 "supervisor.log"
+     (_, sup') <- supervise (monitor root) sup 
+     let file = root </> "out"
+     waitForFile file
+     stopSupervisor sup
+     readFile (file)
+  >>= assertEqual "Expected port number for supervisor process" ["127.0.0.1", show 13570] . read,
+  
+  "supervised process send own host:port to monitor upon startup" `for`
   do supervisedMulticastProcessSetup
      root <- tempDir
-     let testConfig = mkReloaderConfig (\ _ -> True) "listen1" root [] 2
-     killAndRelaunch testConfig Nothing
-     readFile (root </> "mcast")
-  >>= assertEqual "Expected stop signal" "stop" . read
-  
+     let file = root </>  "supervisor1.log"
+     sup <- supervisor 13571 file
+     s <- supervise ((monitor root) { mainModule ="listen1"}) sup
+     found <- waitForFile file
+     stopSupervisor sup
+     readFile file
+  >>= (assertStringMatch "Expected supervised process information signal"  ".*[\"127.0.0 .1\",\"[0-9]+\"].*") . (\s -> trace s s) . map (replace '\n' ' ')
   ]
+  
+assertStringMatch :: String -> String -> String -> Assertion
+assertStringMatch msg pat s =  assertBool msg  (s =~ pat :: Bool)

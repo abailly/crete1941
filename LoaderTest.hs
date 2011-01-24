@@ -13,6 +13,8 @@ import Loader
 import TestUtilities(for,should,with, given)
 import Data.List(isSuffixOf)
 
+import Loader.FilesMonitor
+
 tempDir = getTemporaryDirectory >>= return . (</> "loader-test")
 
 -- |Remove temporary test directory
@@ -65,7 +67,7 @@ excludeDotHtml = not . isSuffixOf ".html"
 
 true x = True
 
-testConfig root = mkReloaderConfig true "SomeModule.SomeApp" root [] 10
+testConfig root = mkReloaderConfig true "SomeModule.SomeApp" root [] 10 defaultLoaderPort
 
 programLoader = test [
   "When loader starts it" `should` [
