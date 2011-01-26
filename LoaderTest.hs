@@ -125,6 +125,8 @@ programLoader = test [
        (_,s') <- recompile c {scanStatus = s} 
        recompile  c {scanStatus = s'}
     >>= \(ex,s) -> assertEqual "nothing should be built" Nothing ex
-
     ]
+  
+  -- supervisor should be stopped if run when start
+  -- stop supervisor when stopping
   ]

@@ -1,4 +1,4 @@
-{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE ScopedTypeVariables,TupleSections #-}
 -- |A communication layer for distributed processes wanting to exchange 
 -- events about their lifecycle. This layer allows a Loader supervisor
 -- to send and receive events from other processes, and dispatch control 
@@ -9,7 +9,7 @@ import Network.Socket
 import Control.Exception(finally,evaluate)
 import Control.Concurrent(threadDelay,forkIO)
 import Data.IORef
-import Data.List(find)
+import Data.List(find,intercalate)
 import Data.Maybe(fromJust)
 import System.Process(terminateProcess,ProcessHandle,CreateProcess(..),createProcess,proc)
 import System.FilePath((</>))
@@ -21,6 +21,9 @@ data Supervisor = Supervisor {
   logFile    :: FilePath            -- ^Filename where all supervisor actions are logged to
   }
                   
+instance Show Supervisor where
+  show (Supervisor ref port log) = "Supervisor " ++ (show port) ++ " " ++ log
+    
 -- |Supervised configuration.
 data Supervised  = Supervised {
   nickName        :: String,               {- ^Nickname for this supervised process, 
@@ -31,13 +34,17 @@ data Supervised  = Supervised {
   procHandle      :: Maybe ProcessHandle,  -- ^Handle to this process, not empty if process has started
   supervisedPort  :: Maybe Int,            -- ^Port this supervised process is listening on    
   supervisedHost  :: Maybe String          -- ^Host this supervised process is running on
-  }
+  } 
 
+instance Show Supervised where
+  show (Supervised n r m a _ pt hs) = intercalate " " ["Supervised",n,r,m,(show a),show pt, show hs]
+    
 -- |Create and start a new Supervisor.
 supervisor :: Int -> String -> IO Supervisor
-supervisor port log = do 
+supervisor port logFile = do 
   mv <- newIORef []
-  let sup = Supervisor mv port log
+  let sup = Supervisor mv port logFile
+  log sup ("starting supervisor " ++ (show sup))
   withSocketsDo $ forkIO $ runSupervisor sup
   return sup
 
@@ -47,6 +54,7 @@ supervise inf sup = do (_, _, _, pid') <-
                          createProcess (proc pathToMain (comPort sup ++ (mainArgs inf))) {cwd = Just root}
                        let inf' = inf { procHandle = Just pid' }
                        modifyIORef (supervised sup) (inf':)
+                       log sup ("started supervised process " ++ (show inf'))
                        return (sup, pid')
   where 
     root       = rootDirectory inf
@@ -85,19 +93,19 @@ replace from to x | x == from = to
                   | otherwise = x
 
 -- |Stop process with given Nickname
-stopWithNickName :: String -> Supervisor -> IO (Supervisor, Supervised)
-stopWithNickName nick sup = do 
-  inf <- sendStopSignal nick sup 
-  threadDelay 1000000
-  return (sup,inf)
+stopWithNickName :: String -> Supervisor -> IO (Supervisor, Maybe Supervised)
+stopWithNickName nick sup = 
+  sendStopSignal nick sup >>= (return . (sup,))
     
-sendStopSignal :: String -> Supervisor -> IO Supervised
+sendStopSignal :: String -> Supervisor -> IO (Maybe Supervised)
 sendStopSignal nick sup = do
   sups <- readIORef (supervised sup)
-  let Just inf = find  ((== nick) . nickName) sups
-  address <- inet_addr (fromJust.supervisedHost $ inf)
-  sock <- socket AF_INET Datagram defaultProtocol
-  let addr = SockAddrInet ((fromIntegral.fromJust.supervisedPort $ inf) :: PortNumber) address
-  sendTo sock "stop" addr
-  return inf
+  case find  ((== nick) . nickName) sups of
+    Just inf -> do 
+      address <- inet_addr (fromJust.supervisedHost $ inf)
+      sock <- socket AF_INET Datagram defaultProtocol
+      let addr = SockAddrInet ((fromIntegral.fromJust.supervisedPort $ inf) :: PortNumber) address
+      sendTo sock "stop" addr
+      return $ Just inf
+    Nothing -> return Nothing
   

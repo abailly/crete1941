@@ -13,6 +13,8 @@ import Control.Monad.State
 import Commands.Server
 import Control.Concurrent
 
+import Loader.Communication
+
 main = do args <- getArgs
           case args of 
             ["test"] -> withSocketsDo $ do mvar <- newEmptyMVar
@@ -24,6 +26,7 @@ main = do args <- getArgs
                                            runAllTests 
                                            takeMVar mvar
                                            return ExitSuccess
+
 
 interpreterLoop t =  (execStateT.runCommands) interpret t >>= interpreterLoop
 

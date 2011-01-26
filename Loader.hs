@@ -27,6 +27,7 @@ import Control.Monad(filterM)
 import qualified Data.Map as M
 import System.FilePath
 import Debug.Trace(trace)
+import Data.Maybe(fromJust)
 
 import Loader.Communication
 import Loader.FilesMonitor
@@ -41,32 +42,38 @@ data HotReloader = HotReloader {
   reloadDelay     :: Int,                  -- ^Delay between each reloading attempt, in microseconds
   scanStatus      :: HashMap,              -- ^Status of scanned files 
   runCount        :: Int,                  -- ^Stop reloader after this number of runs
-  supervising     :: Supervisor
+  supervising     :: Supervised,
+  runningSupervisor :: Maybe Supervisor
   }
                     
 mkReloaderConfig :: (FilePath -> Bool) -> String -> FilePath -> [String] -> Int -> Int ->  
                     HotReloader
-mkReloaderConfig flt main root args count port = HotReloader flt 5000000 M.empty count (Supervised root main args Nothing Nothing)
+mkReloaderConfig flt main root args count port = HotReloader flt 5000000 M.empty count (Supervised "reloaded" root main args Nothing (Just port) (Just "127.0.0.1") ) Nothing
+
+startReloader :: Int -> HotReloader -> IO HotReloader
+startReloader port h = do
+  s <- supervisor port ".reloader.log"
+  return $ h { runningSupervisor = Just s }
 
 -- | Kill and relaunch given application
-killAndRelaunch :: HotReloader -> Maybe ProcessHandle -> IO ()
-killAndRelaunch c maybePid | runCount c == 0 = stopWithPid maybePid (signalPort.supervising $ c)
-killAndRelaunch c maybePid | runCount c /= 0 = do
+killAndRelaunch :: HotReloader -> IO ()
+killAndRelaunch c | runCount c == 0 = stopWithNickName "reloaded" (fromJust $ runningSupervisor c) >> return ()
+killAndRelaunch c | runCount c /= 0 = do
   (what,state') <- recompile c
   let c' = c { scanStatus = state' , runCount = runCount c - 1 } 
   case what of
-    Nothing       -> threadDelay (reloadDelay c)  >> killAndRelaunch c' maybePid
-    Just (ex,out) -> stopWithPid maybePid (signalPort.supervising $ c') >> 
+    Nothing       -> threadDelay (reloadDelay c)  >> killAndRelaunch c'
+    Just (ex,out) -> stopWithNickName "reloaded" (fromJust $ runningSupervisor c') >> 
                      case ex of
                        ExitSuccess -> do
                          putStrLn out
                          putStr $ "Process " ++ (mainModule.supervising $ c)  ++ " succcesfully recompiled, restarting..."
-                         pid' <- supervise (supervising c')
+                         (s',pid) <- supervise (supervising c') (fromJust $ runningSupervisor c')
                          putStrLn $ "Process restarted"
-                         killAndRelaunch c' (Just pid')
+                         killAndRelaunch $ c' { runningSupervisor = Just s'}
                        _           -> do 
                          putStrLn $ "Failed to recompile process " ++ (mainModule.supervising $ c) ++ ", giving up.\n" ++ out
-                         killAndRelaunch c' Nothing
+                         killAndRelaunch c'
   where
     
 -- | Recompile application if there is any change in the underlying

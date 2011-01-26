@@ -96,5 +96,13 @@ processesCommunication =
   >>= (assertStringMatch "Expected supervised process information signal"  ".*[\"127.0.0 .1\",\"[0-9]+\"].*") . (\s -> trace s s) . map (replace '\n' ' ')
   ]
   
+-- stop a non existing process
+-- stop correctly a supervisor
+-- stop a non running supervisor
+-- socket is not free when starting supervisor
+-- supervised is removed when stopped
+-- supervised acknoweldged when stopped
+-- supervisor ping supervised
+
 assertStringMatch :: String -> String -> String -> Assertion
 assertStringMatch msg pat s =  assertBool msg  (s =~ pat :: Bool)
