@@ -2,7 +2,7 @@ module AllTests where
 import PiecesTest
 import CliTest
 import IoTest
---import ServerTest
+import ServerTest
 import LoaderTest
 import NetworkTest
 import IO(stderr)

@@ -1,5 +1,20 @@
 module TestUtilities where
+import qualified Control.Exception as E
 import Test.HUnit
+import Text.Regex.Posix
+
+-- | Assertion over regular expression.
+(~?~) :: String     -- ^ Actual computed value
+         -> String  -- ^ Regular expression the actual value should match
+         -> Assertion
+actual ~?~ expected = assertBool ("expected string matching " ++ expected ++", got " ++ actual) (actual =~ expected :: Bool)
+
+-- | Assertion over exception
+(~?!) :: (E.Exception e, Eq e, Show e) 
+         => IO a
+         -> e
+         -> Test
+action ~?! exception = TestCase $ (action >> return ()) `E.catch` \ e' -> assertEqual ("expected exception " ++ (show exception)) exception e'
 
 -- | test a list of assertions
 shouldBe n = (n ~:) . TestList  . map TestCase 

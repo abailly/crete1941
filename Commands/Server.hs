@@ -9,7 +9,7 @@ import System.IO(Handle, hSetBuffering,
 import Control.Applicative
 import Control.Exception(finally)
 import Network.Socket
-import Control.Concurrent(forkIO,myThreadId, ThreadId,putMVar,MVar)
+import Control.Concurrent(forkIO,myThreadId, ThreadId,putMVar,MVar,newEmptyMVar,takeMVar)
 import Network.BSD
 import Control.Arrow(second)
 import Control.Monad
@@ -53,18 +53,54 @@ httpReply out = liftIO . flip hPutStrLn
                 "Content-Length: "++ (show $ length out) ++ "\r\n" ++ 
                 "Content-Type: text/plain\r\n" ++ "\r\n" ++ out)
                 
-startServer :: (BattleMap t) => t -> Int -> MVar () -> IO ThreadId
+data ServerStatus = 
+  Started |
+  Stopped 
+  deriving (Eq,Show,Ord)
+           
+data Server = Server { 
+  threadId     :: Maybe ThreadId,
+  serverStatus :: ServerStatus
+  } deriving (Eq,Show)
+             
+makeServer :: Server
+makeServer = Server Nothing Stopped
+
+-- |Start a server for given battle map, listening on port and messaging on given variable.
+startServer :: (BattleMap t) => t 
+               -> Int       -- ^Server listening port
+               -> MVar ()   -- ^Channel for notifying server termination
+               -> IO Server -- ^A server object which can be used to control the underlying instance
 startServer terrain port mvar = 
-  do putStrLn $ "starting server on "  ++ (show port) 
-     forkIO ((startListening terrain port) `finally` (putStrLn "stopping server" >> putMVar mvar ()))
+  do putStrLn $ "starting server on "  ++ (show port)
+     let server = makeServer
+     startup terrain port mvar server
+
+startup :: (BattleMap t) => t 
+               -> Int       -- ^Server listening port
+               -> MVar ()   -- ^Channel for notifying server termination
+               -> Server 
+               -> IO Server
+startup terrain port  mvar server = do 
+  sync <- newEmptyMVar
+  tid <- forkIO ((startListening terrain port sync) 
+                 `finally` 
+                 (putStrLn "stopping server" >> putMVar mvar ()))
+  st <- takeMVar sync
+  return $ server { threadId = Just tid, serverStatus = st }
   
-startListening terrain port =
+startListening :: (BattleMap t) => t 
+               -> Int       -- ^Server listening port
+               -> MVar ServerStatus
+               -> IO ()
+startListening terrain port sync =
   do address <- inet_addr "127.0.0.1"
      sock <- socket AF_INET Stream defaultProtocol
      let addr = SockAddrInet ((fromIntegral port) :: PortNumber) address
      bindSocket sock addr
      listen sock 5
      putStrLn $ "listening on " ++ show sock
+     putMVar sync Started
      loopOn terrain sock
      
 loopOn terrain sock = 

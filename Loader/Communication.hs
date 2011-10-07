@@ -18,16 +18,28 @@ import System.Time
 -- |A Log message with a timestamp
 type LogItem = (ClockTime, String) 
 
+data Log = Log  { 
+  logFile    :: FilePath,    -- ^Filename where all supervisor actions are logged to
+  history    :: [LogItem]    -- ^Buffer of all logged messages
+  }
+           
+doLog l msg  = do timestamp <- getClockTime 
+                  let logentry = (timestamp,msg) 
+                  (appendFile (logFile l) $ show logentry  ++ "\n")
+                  return $ l { history = logentry : history l } 
+
+log :: Supervisor -> String -> IO Supervisor
+log sup msg = doLog (logger sup) msg >>= (\l' -> return $ sup { logger = l' })
+
 data Supervisor = Supervisor {
-  supervised :: IORef [Supervised], -- ^All supervised process
-  signalPort :: Int,                -- ^Port this supervisor is listening on 
-  logFile    :: FilePath,           -- ^Filename where all supervisor actions are logged to
-  history    :: [LogItem],          -- ^Buffer of all logged messages
+  supervised  :: IORef [Supervised], -- ^All supervised process
+  signalPort  :: Int,                -- ^Port this supervisor is listening on 
+  logger      :: Log,
   termination :: MVar Supervisor    -- ^Initially empty. Supervisor puts itself into this MVar whenever it terminates
   }
                   
 instance Show Supervisor where
-  show (Supervisor ref port log h _ ) = "Supervisor " ++ (show port) ++ " " ++ log ++ "\n" ++ unlines (map show h)
+  show (Supervisor ref port l  _ ) = "Supervisor " ++ (show port) ++ " " ++ "\n" ++ unlines (map show (history l))
     
 -- |Supervised configuration.
 data Supervised  = Supervised {
@@ -48,7 +60,7 @@ supervisor :: Int -> String -> IO Supervisor
 supervisor port logFile = do 
   sups <- newIORef []
   mv <- newEmptyMVar
-  let sup = Supervisor sups port logFile [] mv
+  let sup = Supervisor sups port (Log logFile []) mv
   log sup ("starting supervisor " ++ (show sup)) >>=  (withSocketsDo . forkIO . runSupervisor)
   return sup
 
@@ -75,11 +87,6 @@ runSupervisor s = do sock <- startListening (signalPort s)
                                           else (log s ("[" ++ (show addr) ++ "] " ++ msg) >>= loop sock)
                          stopped s   = putMVar (termination s) s
 
-log s msg   = (appendFile (logFile s) $ msg  ++ "\n") >> appendLog s msg
-
-appendLog s msg = do timestamp <- getClockTime 
-                     return $ s { history = (timestamp,msg) : history s }
-                  
 stopSupervisor :: Supervisor -> IO Int
 stopSupervisor sup = do 
   address <- inet_addr ("127.0.0.1")

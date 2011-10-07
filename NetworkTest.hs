@@ -102,7 +102,7 @@ processesCommunication =
      sup'' <- takeMVar (termination sup')
      putStrLn $ show sup''
      readFile file
-  >>= (assertStringMatch "Expected supervised process information signal"  ".*[\"127.0.0 .1\",\"[0-9]+\"].*") . (\s -> trace s s) . map (replace '\n' ' ')
+  >>= (assertStringMatch "Expected supervised process information signal"  ".*[127.0.0.1:[0-9]+].*") . (\s -> trace s s) . map (replace '\n' ' ')
   ]
   
 -- stop a non existing process
@@ -114,4 +114,4 @@ processesCommunication =
 -- supervisor ping supervised
 
 assertStringMatch :: String -> String -> String -> Assertion
-assertStringMatch msg pat s =  assertBool msg  (s =~ pat :: Bool)
+assertStringMatch msg pat s =  assertBool (msg ++ ", " ++ s ++ " does not match " ++ pat)  (s =~ pat :: Bool)
