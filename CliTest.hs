@@ -1,4 +1,4 @@
-{-# LANGUAGE FlexibleInstances,  MultiParamTypeClasses #-}
+{-# LANGUAGE FlexibleInstances,  MultiParamTypeClasses, TypeSynonymInstances #-}
 module CliTest where
 
 import MovementRules

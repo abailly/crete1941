@@ -19,7 +19,6 @@ import System.Process
 import System.Exit
 
 import Network.Socket
-import Network.Multicast
 
 import Control.Exception
 import Control.Concurrent

@@ -10,9 +10,9 @@ import System
 import Control.Monad
 import Control.Monad.Trans
 import Control.Monad.State
-import Commands.Server
 import Control.Concurrent
 
+import Commands.Server
 import Loader.Communication
 
 main = do args <- getArgs

@@ -1,4 +1,4 @@
-{-# LANGUAGE ScopedTypeVariables,TupleSections #-}
+{-# LANGUAGE ScopedTypeVariables,TupleSections, DoAndIfThenElse #-}
 -- |A communication layer for distributed processes wanting to exchange 
 -- events about their lifecycle. This layer allows a Loader supervisor
 -- to send and receive events from other processes, and dispatch control 
@@ -7,27 +7,31 @@ module Loader.Communication where
 import Prelude hiding(log)
 import Network.Socket
 import Control.Exception(finally,evaluate)
-import Control.Concurrent(threadDelay,forkIO)
+import Control.Concurrent(threadDelay,forkIO,putMVar,takeMVar,newEmptyMVar, MVar)
 import Data.IORef
 import Data.List(find,intercalate)
 import Data.Maybe(fromJust)
 import System.Process(terminateProcess,ProcessHandle,CreateProcess(..),createProcess,proc)
 import System.FilePath((</>))
+import System.Time
 
+-- |A Log message with a timestamp
+type LogItem = (ClockTime, String) 
 
 data Supervisor = Supervisor {
   supervised :: IORef [Supervised], -- ^All supervised process
   signalPort :: Int,                -- ^Port this supervisor is listening on 
-  logFile    :: FilePath            -- ^Filename where all supervisor actions are logged to
+  logFile    :: FilePath,           -- ^Filename where all supervisor actions are logged to
+  history    :: [LogItem],          -- ^Buffer of all logged messages
+  termination :: MVar Supervisor    -- ^Initially empty. Supervisor puts itself into this MVar whenever it terminates
   }
                   
 instance Show Supervisor where
-  show (Supervisor ref port log) = "Supervisor " ++ (show port) ++ " " ++ log
+  show (Supervisor ref port log h _ ) = "Supervisor " ++ (show port) ++ " " ++ log ++ "\n" ++ unlines (map show h)
     
 -- |Supervised configuration.
 data Supervised  = Supervised {
-  nickName        :: String,               {- ^Nickname for this supervised process, 
-                                               must be unique across all supervised processes within a specific supervisor -}
+  nickName        :: String,               -- ^Nickname for this supervised process, must be unique across all supervised processes within a specific supervisor --
   rootDirectory   :: FilePath,             -- ^Root directory to monitor
   mainModule      :: String,               -- ^Main module (maybe in dotted or slash notation)
   mainArgs        :: [String],             -- ^Main program arguments
@@ -42,10 +46,10 @@ instance Show Supervised where
 -- |Create and start a new Supervisor.
 supervisor :: Int -> String -> IO Supervisor
 supervisor port logFile = do 
-  mv <- newIORef []
-  let sup = Supervisor mv port logFile
-  log sup ("starting supervisor " ++ (show sup))
-  withSocketsDo $ forkIO $ runSupervisor sup
+  sups <- newIORef []
+  mv <- newEmptyMVar
+  let sup = Supervisor sups port logFile [] mv
+  log sup ("starting supervisor " ++ (show sup)) >>=  (withSocketsDo . forkIO . runSupervisor)
   return sup
 
   -- |Request supervision from supervisor to given supervised process.
@@ -54,8 +58,8 @@ supervise inf sup = do (_, _, _, pid') <-
                          createProcess (proc pathToMain (comPort sup ++ (mainArgs inf))) {cwd = Just root}
                        let inf' = inf { procHandle = Just pid' }
                        modifyIORef (supervised sup) (inf':)
-                       log sup ("started supervised process " ++ (show inf'))
-                       return (sup, pid')
+                       sup' <- log sup ("started supervised process " ++ (show inf'))
+                       return (sup', pid')
   where 
     root       = rootDirectory inf
     pathToMain = root </> map (replace '.' '/') (mainModule inf)
@@ -63,14 +67,18 @@ supervise inf sup = do (_, _, _, pid') <-
 
 runSupervisor :: Supervisor -> IO ()
 runSupervisor s = do sock <- startListening (signalPort s)
-                     finally (loop sock) (sClose sock)
+                     finally (loop sock s) (sClose sock)
                        where
-                         loop sock = do (msg,len,addr) <- recvFrom sock 1024
-                                        if "stop" == msg 
-                                          then (log s "stopped")
-                                          else (log s ("[" ++ (show addr) ++ "] " ++ msg) >> loop sock)
-                           
-log s msg   = appendFile (logFile s) $ msg  ++ "\n"
+                         loop sock s = do (msg,len,addr) <- recvFrom sock 1024
+                                          if "stop" == msg 
+                                          then (log s "stopped") >>= stopped
+                                          else (log s ("[" ++ (show addr) ++ "] " ++ msg) >>= loop sock)
+                         stopped s   = putMVar (termination s) s
+
+log s msg   = (appendFile (logFile s) $ msg  ++ "\n") >> appendLog s msg
+
+appendLog s msg = do timestamp <- getClockTime 
+                     return $ s { history = (timestamp,msg) : history s }
                   
 stopSupervisor :: Supervisor -> IO Int
 stopSupervisor sup = do 

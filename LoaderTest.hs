@@ -115,7 +115,8 @@ programLoader = test [
        (Just out,_) <- recompile $ testConfig root
        return out
     >>= \(ex,s) -> assertEqual "build should succeed" ExitSuccess ex,
-    "does not recompile main file if nothing changes" `for`
+    
+    "not recompile main file if nothing changes" `for`
     do sourceTreeSetup
        root <- tempDir
        let c = testConfig root

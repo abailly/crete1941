@@ -5,15 +5,16 @@ import Test.HUnit
 import Test.QuickCheck
 import System.Directory
 import System.FilePath
+import System.IO(withFile, IOMode(ReadMode), hGetContents)
 import TestUtilities(for,should,with, given)
 import Control.Monad(when)
 import Control.Exception(try)
-import Control.Concurrent(threadDelay)
-import Text.Regex.TDFA
+import Control.Concurrent(threadDelay,takeMVar)
+import Text.Regex.Posix
 import Debug.Trace
 
 import Loader.Communication 
-import Loader.Builder
+import Loader.Recompile
 
 tempDir = getTemporaryDirectory >>= return . (</> "loader-test")
 
@@ -32,7 +33,7 @@ prepareTempDir = do
 
 supervisedProcessSetup = do
   tmp <- prepareTempDir 
-  writeFile (tmp </> "listen.hs")  [$here|
+  writeFile (tmp </> "listen.hs")  [here|
 import System
 import System.IO
 main = do args <- getArgs 
@@ -42,11 +43,11 @@ main = do args <- getArgs
 
 supervisedMulticastProcessSetup = do
   tmp <- prepareTempDir 
-  writeFile (tmp </> "listen1.hs")  [$here|
+  writeFile (tmp </> "listen1.hs")  [here|
 import System
 import System.IO
 import Network.Socket
-import Network.Multicast
+
 main = withSocketsDo $ do 
   [host,port] <- getArgs 
   -- remote host address
@@ -67,6 +68,13 @@ waitForFile file = waitForFile' file 100
     waitForFile' file n = do fileExist <- doesFileExist file
                              if fileExist then return True else (threadDelay 200000 >> waitForFile' file (n-1))
 
+waitForFileContentMatching file regexp = do waitForFile file
+                                            waitForContent 100 
+  where
+    waitForContent 0 = return False
+    waitForContent n = do s <- readFile file 
+                          if (s =~ regexp :: Bool) then return True else (threadDelay 200000 >> waitForContent (n-1))
+
 monitor :: FilePath -> Supervised
 monitor path = Supervised "toto" path "listen" [] Nothing Nothing Nothing
 
@@ -82,16 +90,17 @@ processesCommunication =
      waitForFile file
      stopSupervisor sup
      readFile (file)
-  >>= assertEqual "Expected port number for supervisor process" ["127.0.0.1", show 13570] . read,
-  
-  "supervised process send own host:port to monitor upon startup" `for`
+  >>= assertEqual "Expected port number for supervisor process" ["127.0.0.1", show 13570] . read
+  , "supervised process send own host:port to monitor upon startup" `for`
   do supervisedMulticastProcessSetup
      root <- tempDir
-     let file = root </>  "supervisor1.log"
-     sup <- supervisor 13571 file
-     s <- supervise ((monitor root) { mainModule ="listen1"}) sup
-     found <- waitForFile file
-     stopSupervisor sup
+     sup <- supervisor 13571 (root </> "supervisor1.log")
+     (sup',_) <- supervise ((monitor root) { mainModule ="listen1"}) sup
+     let file = root </> "supervisor1.log"
+     found <- waitForFileContentMatching file ".*[\"127.0.0 .1\",\"[0-9]+\"].*"
+     stopSupervisor sup'
+     sup'' <- takeMVar (termination sup')
+     putStrLn $ show sup''
      readFile file
   >>= (assertStringMatch "Expected supervised process information signal"  ".*[\"127.0.0 .1\",\"[0-9]+\"].*") . (\s -> trace s s) . map (replace '\n' ' ')
   ]

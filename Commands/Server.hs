@@ -15,7 +15,7 @@ import Control.Arrow(second)
 import Control.Monad
 import Control.Monad.Reader
 import Control.Monad.State
-import Text.Regex.TDFA
+import Text.Regex.Posix
 
 import MovementRules
 import Terrain

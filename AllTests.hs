@@ -2,7 +2,7 @@ module AllTests where
 import PiecesTest
 import CliTest
 import IoTest
-import ServerTest
+--import ServerTest
 import LoaderTest
 import NetworkTest
 import IO(stderr)
@@ -16,17 +16,17 @@ newtype Tests = T {unT :: Test}
 data TestCount = TestCount Int Test
 
 tests = T $ test [
-  unitManipulations,
-                  movementRules,
-                  combatRules,
-                  combatEffect,
-                  commandsHandling,
-                  decodeCommandsFromStrings,
-                 programLoader
+  unitManipulations
+  ,movementRules
+  ,combatRules
+  ,combatEffect
+  ,commandsHandling
+  ,decodeCommandsFromStrings
+  ,programLoader
   ,processesCommunication
---                 ,interactThroughAnHttpServer
-                 ]
-
+--  ,interactThroughAnHttpServer
+  ]
+        
 runAllTests = do putStrLn "Running test suite: "
                  putStrLn (show tests)
                  counts <- runTest (unT tests)

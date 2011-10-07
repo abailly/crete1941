@@ -10,7 +10,7 @@ import System.IO(hClose,hGetContents)
 doRecompile :: String -> FilePath -> IO (ExitCode,String)
 doRecompile mainModule rootDirectory = do
   (_, Just outh, Just errh, pid) <-
-       createProcess (proc "D:/Program Files/Haskell Platform/2010.2.0.0/bin/ghc.exe" 
+       createProcess (proc "/usr/local/bin/ghc" 
                       ["--make", "-threaded", mainModule]) { cwd = Just rootDirectory,
                                                              std_out = CreatePipe, 
                                                              std_err = CreatePipe}
