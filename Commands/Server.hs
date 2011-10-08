@@ -29,9 +29,7 @@ newtype CommandHandleIO a = CommandHandleIO { runHandle :: ReaderT Handle IO a }
                                      
 instance CommandIO (CommandHandleIO) where
    readCommand   = do r <- ask
-                      liftIO $ putStrLn ("try reading input from " ++ (show r))
                       line <- liftIO $ hGetLine r
-                      liftIO $ putStrLn ("read input from " ++ (show r) ++  ": " ++ (show line))
                       liftIO (hGetLine r >>= globToEmptyLine r)
                       case  ((toString line) =~ "GET /(.*) HTTP/1.1" :: (String,String,String,[String])) of
                         (_,_,_,[])  -> liftIO (putStrLn $ "fail match "++ (toString line)) >> (return $ CommandError ("Don't understand request "++ (toString line)))
@@ -97,6 +95,7 @@ startListening terrain port sync =
   do address <- inet_addr "127.0.0.1"
      sock <- socket AF_INET Stream defaultProtocol
      let addr = SockAddrInet ((fromIntegral port) :: PortNumber) address
+     setSocketOption sock ReuseAddr 1
      bindSocket sock addr
      listen sock 5
      putStrLn $ "listening on " ++ show sock

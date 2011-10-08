@@ -15,9 +15,7 @@ import Control.Concurrent(killThread,newEmptyMVar,putMVar)
 
 -- From http://book.realworldhaskell.org/read/extended-example-web-client-programming.html      
 simpleHttpContent url =
-    do putStrLn ("connecting to " ++ url)
-       resp <- simpleHTTP request
-       putStrLn $ "got response: " ++ (show resp)
+    do resp <- simpleHTTP request
        case resp of
          Left x -> return $ ("Error connecting: " ++ show x)
          Right r -> 

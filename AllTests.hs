@@ -24,15 +24,18 @@ tests = T $ test [
   ,decodeCommandsFromStrings
   ,programLoader
   ,processesCommunication
---  ,interactThroughAnHttpServer
   ]
         
-runAllTests = do putStrLn "Running test suite: "
-                 putStrLn (show tests)
-                 counts <- runTest (unT tests)
-                 case (errors counts + failures counts) of
-                   0 -> return ExitSuccess
-                   n -> return (ExitFailure n)
+testsWithServer = T $ test [
+  interactThroughAnHttpServer
+  ]
+
+runAllTests tests = do putStrLn "Running test suite: "
+                       putStrLn (show tests)
+                       counts <- runTest (unT tests)
+                       case (errors counts + failures counts) of
+                         0 -> return ExitSuccess
+                         n -> return (ExitFailure n)
 
 instance Show Tests where
   show t = show' "" t

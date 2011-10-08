@@ -19,11 +19,13 @@ main = do args <- getArgs
           case args of 
             ["test"] -> withSocketsDo $ do mvar <- newEmptyMVar
                                            startServer terrain (fromIntegral serverPort)  mvar          
-                                           runAllTests 
+                                           runAllTests  tests
+                                           runAllTests  testsWithServer
                                            return ExitSuccess
             _        -> withSocketsDo $ do mvar <- newEmptyMVar
                                            startServer terrain (fromIntegral serverPort)  mvar          
-                                           runAllTests 
+                                           runAllTests tests
+                                           runAllTests  testsWithServer
                                            takeMVar mvar
                                            return ExitSuccess
 

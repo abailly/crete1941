@@ -91,18 +91,18 @@ processesCommunication =
      stopSupervisor sup
      readFile (file)
   >>= assertEqual "Expected port number for supervisor process" ["127.0.0.1", show 13570] . read
+  
   , "supervised process send own host:port to monitor upon startup" `for`
   do supervisedMulticastProcessSetup
      root <- tempDir
      sup <- supervisor 13571 (root </> "supervisor1.log")
      (sup',_) <- supervise ((monitor root) { mainModule ="listen1"}) sup
      let file = root </> "supervisor1.log"
-     found <- waitForFileContentMatching file ".*[\"127.0.0 .1\",\"[0-9]+\"].*"
+     found <- waitForFileContentMatching file ".*starting supervisor.*"
      stopSupervisor sup'
      sup'' <- takeMVar (termination sup')
-     putStrLn $ show sup''
      readFile file
-  >>= (assertStringMatch "Expected supervised process information signal"  ".*[127.0.0.1:[0-9]+].*") . (\s -> trace s s) . map (replace '\n' ' ')
+  >>= (assertStringMatch "Expected supervised process information signal"  ".*[127.0.0.1:[0-9]+].*") . map (replace '\n' ' ')
   ]
   
 -- stop a non existing process
