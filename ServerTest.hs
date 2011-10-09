@@ -40,7 +40,7 @@ interactThroughAnHttpServer =
   "interacting with Crete 1941 through a REST API"  `shouldBe`
   matchReplyContentToRESTCommandsFor terrain `with`
   [
-    ("/GetUnitLocations", "\\{\"UnitLocations\".*\\}"),
-    ("/GetUnitStatus",   "\\{\"UnitStatus\":.*\\}")
+    ("/units/locations", "\\{\"UnitLocations\".*\\}"),
+    ("/units/status",   "\\{\"UnitStatus\":.*\\}")
   ]
   

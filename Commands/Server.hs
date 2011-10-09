@@ -11,6 +11,7 @@ import Control.Exception(finally)
 import Network.Socket
 import Control.Concurrent(forkIO,myThreadId, ThreadId,putMVar,MVar,newEmptyMVar,takeMVar)
 import Network.BSD
+
 import Control.Arrow(second)
 import Control.Monad
 import Control.Monad.Reader
@@ -24,33 +25,6 @@ import Commands.IO
 
 import qualified Text.JSON.Generic as JG
 
-newtype CommandHandleIO a = CommandHandleIO { runHandle :: ReaderT Handle IO a }
-                            deriving (Monad,MonadIO, MonadReader Handle)
-                                     
-instance CommandIO (CommandHandleIO) where
-   readCommand   = do r <- ask
-                      line <- liftIO $ hGetLine r
-                      liftIO (hGetLine r >>= globToEmptyLine r)
-                      case  ((toString line) =~ "GET /(.*) HTTP/1.1" :: (String,String,String,[String])) of
-                        (_,_,_,[])  -> liftIO (putStrLn $ "fail match "++ (toString line)) >> (return $ CommandError ("Don't understand request "++ (toString line)))
-                        (_,_,_,[x]) -> case decode (x) of 
-                                         Right c -> liftIO (putStrLn $ "match "++ x) >> return c
-                                         Left  m -> liftIO (putStrLn $ "unknown command "++ x) >> (return $ CommandError m)
-     where
-       globToEmptyLine r l | l == (fromString "\r") = return ()
-                           | otherwise              = hGetLine r >>= globToEmptyLine r 
-
-   writeResult (Msg str) = ask >>= (httpReply $ unlines str)
-   writeResult r         = ask >>= (httpReply $ JG.encodeJSON r)
-   writeMessage msg      = ask >>= (httpReply msg)
-   doExit                = ask >>= liftIO . hClose
-                           
-httpReply out = liftIO . flip hPutStrLn 
-                (fromString $ 
-                "HTTP/1.1 200 OK\r\n" ++ 
-                "Content-Length: "++ (show $ length out) ++ "\r\n" ++ 
-                "Content-Type: text/plain\r\n" ++ "\r\n" ++ out)
-                
 data ServerStatus = 
   Started |
   Stopped 
@@ -104,7 +78,7 @@ startListening terrain port sync =
      
 loopOn terrain sock = 
   do (client, clientAddress) <- accept sock
-     putStrLn $ "connecting " ++ show client
+     putStrLn $ "connecting " ++ show clientAddress
      forkIO (commandsLoop client terrain)
      loopOn terrain sock
 
@@ -116,3 +90,31 @@ commandsLoop sock t = do hdl <- socketToHandle sock ReadWriteMode
                                                  (\t -> do isClosed <- hIsClosed hdl 
                                                            if isClosed then return () else doInterpret hdl t)
                       
+-- Low-level I/O part
+
+newtype CommandHandleIO a = CommandHandleIO { runHandle :: ReaderT Handle IO a }
+                            deriving (Monad,MonadIO, MonadReader Handle)
+                                     
+instance CommandIO (CommandHandleIO) where
+   readCommand   = do r <- ask
+                      line <- liftIO $ hGetLine r
+                      liftIO (hGetLine r >>= globToEmptyLine r)
+                      case  ((toString line) =~ "GET /(.*) HTTP/1.1" :: (String,String,String,[String])) of
+                        (_,_,_,["units/locations"]) -> return GetUnitLocations
+                        (_,_,_,["units/status"])    -> return GetUnitStatus
+                        (_,_,_,_)    -> return $ CommandError ("Don't understand request "++ (toString line))
+     where
+       globToEmptyLine r l | l == (fromString "\r") = return ()
+                           | otherwise              = hGetLine r >>= globToEmptyLine r 
+
+   writeResult (Msg str) = ask >>= (httpReply $ unlines str)
+   writeResult r         = ask >>= (httpReply $ JG.encodeJSON r)
+   writeMessage msg      = ask >>= (httpReply msg)
+   doExit                = ask >>= liftIO . hClose
+                           
+httpReply out = liftIO . flip hPutStrLn 
+                (fromString $ 
+                "HTTP/1.1 200 OK\r\n" ++ 
+                "Content-Length: "++ (show $ length out) ++ "\r\n" ++ 
+                "Content-Type: text/plain\r\n" ++ "\r\n" ++ out)
+                

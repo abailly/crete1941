@@ -27,24 +27,23 @@ instance Terrain Theater where
     allUnitStatus      = M.assocs . unitStatus
 
 instance BattleMap Theater where
-  throwDice     = do t <- S.get
-                     let random = randomStream t
-                     S.put $ t { randomStream = tail (random) }
-                     return $ head (random)
-  whereIs uname = S.get >>= (return . unitLocation uname)
-  zoneDataFor name    = S.get >>= return . zone name
-  setZoneDataFor name z = do t <- S.get 
-                             S.put $ t { zoneState = M.adjust (\ _ -> z) name (zoneState t)}
-                             return z
-  updateMovedUnit u z = do t <- S.get 
-                           S.put $ t { unitLocations = M.adjust (\ _ -> zoneName z) (unitName u) (unitLocations t), 
-                                       unitStatus    = M.adjust (\ _ -> u) (unitName u) (unitStatus t)}
-                           return u
-  updateStatusOf u = do t <- S.get
-                        S.put $ t { unitStatus = M.adjust (const u) (unitName u) (unitStatus t) }
-                        return u
-  eliminate u = do t <- S.get 
-                   S.put $ t { unitStatus = M.delete (unitName u) (unitStatus t),
-                               unitLocations = M.delete (unitName u) (unitLocations t)
-                               }
-                   return u
+  throwDice              = do t <- S.get
+                              let random  = randomStream t
+                              S.put $ t { randomStream = tail (random) }
+                              return $ head (random)
+  whereIs uname          = S.get >>= return . unitLocation uname
+  zoneDataFor name       = S.get >>= return . zone name
+  setZoneDataFor name z  = do t <- S.get 
+                              S.put $ t { zoneState   = M.adjust (\ _ -> z) name (zoneState t)}
+                              return z
+  updateMovedUnit u z    = do t <- S.get 
+                              S.put $ t { unitLocations = M.adjust (\ _ -> zoneName z) (unitName u) (unitLocations t), 
+                                          unitStatus    = M.adjust (\ _ -> u) (unitName u) (unitStatus t)}
+                              return u
+  updateStatusOf u       = do t <- S.get
+                              S.put $ t { unitStatus       = M.adjust (const u) (unitName u) (unitStatus t) }
+                              return u
+  eliminate u            = do t <- S.get 
+                              S.put $ t { unitStatus            = M.delete (unitName u) (unitStatus t),
+                                          unitLocations         = M.delete (unitName u) (unitLocations t)}
+                              return u
