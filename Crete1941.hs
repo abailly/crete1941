@@ -30,5 +30,8 @@ main = do args <- getArgs
                                            return ExitSuccess
 
 
-interpreterLoop t =  (execStateT.runCommands) interpret t >>= interpreterLoop
+interpreterLoop t =  do c <- readCommand
+                        let (r,t) = (runState (executeCommand c) t)
+                        writeResult r
+                        interpreterLoop t
 

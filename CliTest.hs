@@ -14,23 +14,9 @@ import TestData
 import Data.List
 import Data.Ord (comparing)
 
--- |An instance of CommandIO for test purpose
--- fst contains command to read 
--- snd contains output from interpreter
-instance CommandIO (S.State ([Command],[CommandResult])) where
-   readCommand   = do ((c:cs),rs) <- S.get
-                      S.put (cs,rs)
-                      return c
-   writeResult r = do (cs,rs) <- S.get
-                      S.put (cs, r:rs)
-                      return ()
-   doExit        = do (cs,rs) <- S.get
-                      S.put (cs, rs)
-                      return ()
-                      
-interpretOneCommandWith f cmd= (S.execState ((f . runCommands) interpret terrain)) cmd
+interpretOneCommandWith cmd= (S.evalState (executeCommand cmd) terrain)
 
-commandResultIs cmd res = (show cmd) ++ " yields " ++ (take 30 (show res)) ++ "..." ~: interpretOneCommandWith S.evalStateT ([cmd],[])  ~?= ([],[res])
+commandResultIs cmd res = (show cmd) ++ " yields " ++ (take 30 (show res)) ++ "..." ~: interpretOneCommandWith cmd  ~?= res
  
 commandsHandling = test [
    "Interpreting command" `should` [
@@ -44,6 +30,6 @@ commandsHandling = test [
    ,
    "command execution" `should` [
      "change terrain when moving unit" `for`
-     ((S.execStateT.runCommands) (executeCommand (MoveUnit "Campbell" "Beach")) terrain) >>= (assertEqual "Unexpected location" "Beach" . unitLocation "Campbell")     
+     (S.evalState (executeCommand (MoveUnit "Campbell" "Beach") >> S.get >>= (return . unitLocation "Campbell") ) terrain) ~?= "Beach"
      ]
    ]

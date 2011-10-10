@@ -1,5 +1,5 @@
-{-# LANGUAGE FlexibleInstances, GeneralizedNewtypeDeriving #-}
-module Commands.Server where
+{-# LANGUAGE FlexibleInstances, GeneralizedNewtypeDeriving, MultiParamTypeClasses #-}
+module Commands.Server(startServer) where
 
 import Prelude hiding (null)
 import Data.ByteString.UTF8 (fromString,toString)
@@ -16,14 +16,20 @@ import Control.Arrow(second)
 import Control.Monad
 import Control.Monad.Reader
 import Control.Monad.State
+import Control.Monad.Writer(WriterT)
 import Text.Regex.Posix
 
 import MovementRules
 import Terrain
 import CommandsInterpreter
-import Commands.IO
 
 import qualified Text.JSON.Generic as JG
+
+import Network.Wai
+import Network.HTTP.Types
+import Network.Wai.Handler.Warp (run)
+import qualified Data.ByteString.Char8 as B8
+import qualified Data.ByteString.Lazy.Char8 as LB8
 
 data ServerStatus = 
   Started |
@@ -86,35 +92,46 @@ commandsLoop sock t = do hdl <- socketToHandle sock ReadWriteMode
                          hSetBuffering hdl (LineBuffering)
                          doInterpret hdl t
                            where
-                             doInterpret hdl t = ((runReaderT.runHandle) ((execStateT.runCommands) interpret t) hdl) >>= 
-                                                 (\t -> do isClosed <- hIsClosed hdl 
-                                                           if isClosed then return () else doInterpret hdl t)
+                             doInterpret hdl t = readCommand hdl >>= 
+                                                 (\c -> return $ runState (executeCommand c) t) >>= 
+                                                 (\(a,t) -> do 
+                                                     writeResult a hdl
+                                                     isClosed <- hIsClosed hdl 
+                                                     if isClosed then return () else doInterpret hdl t)
                       
--- Low-level I/O part
+-- Low-level I/O 
 
-newtype CommandHandleIO a = CommandHandleIO { runHandle :: ReaderT Handle IO a }
-                            deriving (Monad,MonadIO, MonadReader Handle)
-                                     
-instance CommandIO (CommandHandleIO) where
-   readCommand   = do r <- ask
-                      line <- liftIO $ hGetLine r
-                      liftIO (hGetLine r >>= globToEmptyLine r)
-                      case  ((toString line) =~ "GET /(.*) HTTP/1.1" :: (String,String,String,[String])) of
-                        (_,_,_,["units/locations"]) -> return GetUnitLocations
-                        (_,_,_,["units/status"])    -> return GetUnitStatus
-                        (_,_,_,_)    -> return $ CommandError ("Don't understand request "++ (toString line))
+readCommand hdl   = do line <- hGetLine hdl
+                       (hGetLine hdl >>= globToEmptyLine hdl)
+                       case  ((toString line) =~ "GET /(.*) HTTP/1.1" :: (String,String,String,[String])) of
+                         (_,_,_,["units/locations"]) -> return GetUnitLocations
+                         (_,_,_,["units/status"])    -> return GetUnitStatus
+                         (_,_,_,_)                   -> return $ CommandError ("Don't understand request "++ (toString line))
      where
        globToEmptyLine r l | l == (fromString "\r") = return ()
-                           | otherwise              = hGetLine r >>= globToEmptyLine r 
+                           | otherwise              = hGetLine hdl >>= globToEmptyLine hdl
 
-   writeResult (Msg str) = ask >>= (httpReply $ unlines str)
-   writeResult r         = ask >>= (httpReply $ JG.encodeJSON r)
-   writeMessage msg      = ask >>= (httpReply msg)
-   doExit                = ask >>= liftIO . hClose
+writeResult hdl   = (httpReply $ JG.encodeJSON hdl)
                            
-httpReply out = liftIO . flip hPutStrLn 
+httpReply out = flip hPutStrLn 
                 (fromString $ 
                 "HTTP/1.1 200 OK\r\n" ++ 
                 "Content-Length: "++ (show $ length out) ++ "\r\n" ++ 
                 "Content-Type: text/plain\r\n" ++ "\r\n" ++ out)
                 
+-- WAI-based low-level I/O
+-- newtype CommandRequestIO a = CommandRequestIO { runRequest :: WriterT Response (Reader Request) a }
+--                             deriving (Monad, MonadReader Request)
+                                     
+-- instance CommandIO (CommandRequestIO) Response where
+--    readCommand   = do r <- ask
+--                       let path = B8.unpack $ rawPathInfo r
+--                       case path of
+--                         "units/locations" -> return GetUnitLocations
+--                         "units/status"    -> return GetUnitStatus
+--                         _                 -> return $ CommandError ("Don't understand request "++ path)
+
+--    writeResult (Msg str) = responseLBS statusOK [("Content-Type", B8.pack "text/plain")]       (LB8.pack str)
+--    writeResult r         = responseLBS statusOK [("Content-Type", B8.pack "application/json")] (LB8.pack $ JG.encodeJSON r)
+--    writeMessage msg      = responseLBS statusOK [("Content-Type", B8.pack "text/plain")]       (LB8.pack msg)
+--    doExit                = responseLBS statusOK [("Content-Type", B8.pack "text/plain")]       (LB8.pack "Exiting")
