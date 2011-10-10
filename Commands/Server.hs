@@ -28,8 +28,10 @@ import qualified Text.JSON.Generic as JG
 import Network.Wai
 import Network.HTTP.Types
 import Network.Wai.Handler.Warp (run)
+import qualified Data.Text as T 
 import qualified Data.ByteString.Char8 as B8
 import qualified Data.ByteString.Lazy.Char8 as LB8
+import Data.CaseInsensitive(mk)
 
 data ServerStatus = 
   Started |
@@ -120,18 +122,15 @@ httpReply out = flip hPutStrLn
                 "Content-Type: text/plain\r\n" ++ "\r\n" ++ out)
                 
 -- WAI-based low-level I/O
--- newtype CommandRequestIO a = CommandRequestIO { runRequest :: WriterT Response (Reader Request) a }
---                             deriving (Monad, MonadReader Request)
-                                     
--- instance CommandIO (CommandRequestIO) Response where
---    readCommand   = do r <- ask
---                       let path = B8.unpack $ rawPathInfo r
---                       case path of
---                         "units/locations" -> return GetUnitLocations
---                         "units/status"    -> return GetUnitStatus
---                         _                 -> return $ CommandError ("Don't understand request "++ path)
 
---    writeResult (Msg str) = responseLBS statusOK [("Content-Type", B8.pack "text/plain")]       (LB8.pack str)
---    writeResult r         = responseLBS statusOK [("Content-Type", B8.pack "application/json")] (LB8.pack $ JG.encodeJSON r)
---    writeMessage msg      = responseLBS statusOK [("Content-Type", B8.pack "text/plain")]       (LB8.pack msg)
---    doExit                = responseLBS statusOK [("Content-Type", B8.pack "text/plain")]       (LB8.pack "Exiting")
+-- Session extractor function
+-- A 'Session' is an instance of BattleMap t which is keyed by a unique id
+
+
+application :: (BattleMap t) => t -> Application
+application t r = do case map T.unpack $ pathInfo r of
+                       ["units","locations"] -> return $ respond $ evalState (executeCommand GetUnitLocations) t
+                       ["units","status"]    -> return $ respond $ evalState (executeCommand GetUnitStatus) t
+                       _                     -> return $ respond ("Don't understand request "++ (B8.unpack $ rawPathInfo r)) 
+
+respond r         = responseLBS statusOK [(mk $ B8.pack "Content-Type", B8.pack "application/json")] (LB8.pack $ JG.encodeJSON r)
