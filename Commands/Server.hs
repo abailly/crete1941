@@ -7,7 +7,10 @@ import Control.Concurrent(forkIO,myThreadId, ThreadId,putMVar,MVar,newEmptyMVar,
 
 import Data.Enumerator(Iteratee)
 
+import Control.Concurrent(threadDelay)
 import Control.Concurrent.STM
+
+import System.IO.Unsafe
 
 import Control.Monad.Trans(lift)
 import Control.Monad.State(runState)
@@ -26,6 +29,10 @@ import qualified Data.ByteString.Char8 as B8
 import qualified Data.ByteString.Lazy.Char8 as LB8
 import Data.CaseInsensitive(mk)
 
+import Yesod.Logger
+
+import Text.Printf(printf)
+
 data ServerStatus = 
   Started |
   Stopped 
@@ -33,41 +40,52 @@ data ServerStatus =
                 
 -- WAI-based low-level I/O
 
-data (BattleMap t) => Server t = Server {
+data (BattleMap t, Show t) => Server t = Server {
   threadId      :: Maybe ThreadId,
   serverStatus  :: ServerStatus,
-  sharedSession :: TVar t
-  } 
+  sharedSession :: TVar t,
+  logger        :: Logger
+  }
+                                         
+instance (BattleMap t, Show t) => Show (Server t) where
+  show server = printf "Server { threadId = %s, serverStatus = %s, sharedSession = %s }"
+                (show $ threadId server)
+                (show $ serverStatus server)
+                (show $ unsafePerformIO $ readTVarIO $ sharedSession server)
+  
                    
+
 startWarpServer :: (BattleMap t, Show t) => t 
                -> Int       -- ^Server listening port
                -> MVar ()   -- ^Channel for notifying server termination
                -> IO (Server t) -- ^A server object which can be used to control the underlying instance
 startWarpServer t port sync = do 
   ref <- newTVarIO t
-  putStrLn $ "starting server on "  ++ (show port)
-  let server = Server Nothing Stopped ref
-  spawnWarpServer port sync server
+  l  <- makeLogger
+  let server = Server Nothing Stopped ref l
+  timed l (T.pack $ "starting server on "  ++ (show port)) (spawnWarpServer port sync server) 
+   
                      
 spawnWarpServer :: (BattleMap t, Show t) => Int       -- ^Server listening port
                -> MVar ()   -- ^Channel for notifying server termination
                -> Server t 
                -> IO (Server t)
 spawnWarpServer port mvar server = do 
-  tid <- forkIO ((run port $ application (sharedSession server))
+  tid <- forkIO ((run port $ application (logger server) (sharedSession server))
                  `finally` 
                  (putStrLn "stopping server" >> putMVar mvar ()))
   return $ server { threadId = Just tid, serverStatus = Started }
   
-application :: (BattleMap t, Show t) => TVar t -> Application
-application ref r = do 
-  lift $ putStrLn (show r)
-  case map T.unpack $ pathInfo r of
-    ["units","locations"]  -> action ref GetUnitLocations
-    ["units","status"]     -> action ref GetUnitStatus
-    ["unit",name]          -> action ref (SingleUnitStatus name)
-    ["unit",name,"move"]   -> action ref (decodeMove (queryString r) name Nothing)
-    _                      -> return $ respond ("Don't understand request "++ (B8.unpack $ rawPathInfo r)) 
+application :: (BattleMap t, Show t) => Logger -> TVar t -> Application
+application l ref r = do 
+  timed l (T.pack $ "serving request " ++ show r) (
+    case map T.unpack $ pathInfo r of
+      ["exit"]               -> action ref Exit
+      ["units","locations"]  -> action ref GetUnitLocations
+      ["units","status"]     -> action ref GetUnitStatus
+      ["unit",name]          -> action ref (SingleUnitStatus name)
+      ["unit",name,"move"]   -> action ref (decodeMove (queryString r) name Nothing)
+      _                      -> return $ respond ("Don't understand request "++ (B8.unpack $ rawPathInfo r)) )
 
 decodeMove :: Query -> String -> Maybe String -> Command
 decodeMove []                  unit (Just to) = MoveUnit unit to

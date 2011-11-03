@@ -33,7 +33,7 @@ simpleHttpContent url =
           uri = fromJust $ parseURI url
 
 matchReplyContentToRESTCommandsFor t (pat,contentMatch) = do output <- simpleHttpContent ("http://127.0.0.1:" ++ show serverPort ++ pat)
-                                                             simpleHttpContent ("http://127.0.0.1:" ++ show serverPort ++ "/Exit")
+                                                             simpleHttpContent ("http://127.0.0.1:" ++ show serverPort ++ "/exit")
                                                              output ~?~ contentMatch
   
 interactThroughAnHttpServer = 
