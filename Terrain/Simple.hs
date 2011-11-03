@@ -12,16 +12,16 @@ data Theater = Theater { zoneConnectivity :: [(Name,[(Name,Bool)])],
                          zoneState        :: M.Map Name Zone,
                          unitStatus       :: M.Map Name Unit, 
                          randomStream     :: [Integer] }
-                         
+             deriving (Show, Read)
 
 instance Terrain Theater where
     connection t n1 n2 = (lookup n1 (zoneConnectivity t) >>= lookup n2)
     adjacentZones t n1 = case lookup n1 (zoneConnectivity t) of 
                             Just l -> map fst l
                             Nothing -> []
-    unitLocation n t   = fromJust $ M.lookup n (unitLocations t) 
-    zone name t        = fromJust $ M.lookup name (zoneState t)
-    unit n t           = fromJust $ M.lookup n (unitStatus t) 
+    unitLocation n t   = fromMaybe (error $ "cannot find location of unit " ++ show n) (M.lookup n (unitLocations t))
+    zone name t        = fromMaybe (error $ "cannot find zone for " ++ show name) (M.lookup name (zoneState t))
+    unit n t           = fromMaybe (error $ "cannot find unit " ++ show n) $ M.lookup n (unitStatus t) 
     allUnitLocations   = M.assocs . unitLocations
     unitsIn t n        = M.keys $ M.filter (== n) (unitLocations t)
     allUnitStatus      = M.assocs . unitStatus

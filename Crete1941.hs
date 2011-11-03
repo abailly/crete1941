@@ -17,18 +17,13 @@ import Loader.Communication
 
 main = do args <- getArgs
           case args of 
-            ["test"] -> withSocketsDo $ do mvar <- newEmptyMVar
-                                           startServer terrain (fromIntegral serverPort)  mvar          
-                                           runAllTests  tests
-                                           runAllTests  testsWithServer
-                                           return ExitSuccess
             ["wtest"] -> withSocketsDo $ do mvar <- newEmptyMVar
-                                            startWarpServer terrain (fromIntegral serverPort)
+                                            startWarpServer terrain (fromIntegral serverPort) mvar
                                             runAllTests  tests
                                             runAllTests  testsWithServer
                                             return ExitSuccess
             _        -> withSocketsDo $ do mvar <- newEmptyMVar
-                                           startServer terrain (fromIntegral serverPort)  mvar          
+                                           startWarpServer terrain (fromIntegral serverPort)  mvar          
                                            runAllTests tests
                                            runAllTests  testsWithServer
                                            takeMVar mvar
