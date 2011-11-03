@@ -44,3 +44,8 @@ interactThroughAnHttpServer =
     ("/units/status",   "\\{\"UnitStatus\":.*\\}")
   ]
   
+  -- /unit/<name>/location
+  -- /unit/<name>/status
+  -- /unit/<name>/move?target=<zone>
+  
+

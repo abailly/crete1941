@@ -22,6 +22,11 @@ main = do args <- getArgs
                                            runAllTests  tests
                                            runAllTests  testsWithServer
                                            return ExitSuccess
+            ["wtest"] -> withSocketsDo $ do mvar <- newEmptyMVar
+                                            startWarpServer terrain (fromIntegral serverPort)
+                                            runAllTests  tests
+                                            runAllTests  testsWithServer
+                                            return ExitSuccess
             _        -> withSocketsDo $ do mvar <- newEmptyMVar
                                            startServer terrain (fromIntegral serverPort)  mvar          
                                            runAllTests tests
