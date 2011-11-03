@@ -41,11 +41,12 @@ interactThroughAnHttpServer =
   matchReplyContentToRESTCommandsFor terrain `with`
   [
     ("/units/locations", "\\{\"UnitLocations\".*\\}"),
-    ("/units/status",   "\\{\"UnitStatus\":.*\\}")
+    ("/units/status",   "\\{\"UnitStatus\":.*\\}"),
+    ("/unit/arm1",   "\\{\"UnitStatus\":.*\\}"),
+    ("/unit/arm1/move?to=Beach",   "\\{\"UnitMoved\":.*\\}")
   ]
   
   -- /unit/<name>/location
   -- /unit/<name>/status
-  -- /unit/<name>/move?target=<zone>
   
 

@@ -63,10 +63,11 @@ application :: (BattleMap t, Show t) => TVar t -> Application
 application ref r = do 
   lift $ putStrLn (show r)
   case map T.unpack $ pathInfo r of
-    ["units","locations"] -> action ref GetUnitLocations
-    ["units","status"]    -> action ref GetUnitStatus
-    ["unit",name,"move"]  -> action ref (decodeMove (queryString r) name Nothing)
-    _                     -> return $ respond ("Don't understand request "++ (B8.unpack $ rawPathInfo r)) 
+    ["units","locations"]  -> action ref GetUnitLocations
+    ["units","status"]     -> action ref GetUnitStatus
+    ["unit",name]          -> action ref (SingleUnitStatus name)
+    ["unit",name,"move"]   -> action ref (decodeMove (queryString r) name Nothing)
+    _                      -> return $ respond ("Don't understand request "++ (B8.unpack $ rawPathInfo r)) 
 
 decodeMove :: Query -> String -> Maybe String -> Command
 decodeMove []                  unit (Just to) = MoveUnit unit to

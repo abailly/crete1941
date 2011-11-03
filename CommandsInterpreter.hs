@@ -1,4 +1,4 @@
-{-# LANGUAGE GeneralizedNewtypeDeriving, MultiParamTypeClasses, FlexibleInstances, FlexibleContexts, DeriveDataTypeable, FunctionalDependencies #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving, MultiParamTypeClasses, FlexibleInstances, FlexibleContexts, DeriveDataTypeable, FunctionalDependencies, TupleSections #-}
 module CommandsInterpreter where
 import MovementRules
 import Terrain
@@ -9,6 +9,7 @@ import qualified Data.Generics as G
 
 data Command = GetUnitLocations 
              | GetUnitStatus
+             | SingleUnitStatus Name
              | MoveUnit Name Name
              | CommandError String
              | Help
@@ -27,6 +28,7 @@ data CommandResult = UnitLocations [(Name,Name)]
 executeCommand ::  (BattleMap t, MonadState t s) => Command -> s CommandResult
 executeCommand GetUnitLocations = get >>= return . UnitLocations . allUnitLocations
 executeCommand GetUnitStatus    = get >>= return . UnitStatus . allUnitStatus
+executeCommand (SingleUnitStatus un) = get >>= return . UnitStatus . (:[]) . (un,). unit un
 executeCommand (CommandError s) = return $ ErrorInCommands ("unknown command: " ++ s)
 executeCommand Exit             = return Bye
 executeCommand Help             = return $ Msg (displayAbout ++ displayHelp)
