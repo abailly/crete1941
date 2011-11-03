@@ -43,8 +43,9 @@ interactThroughAnHttpServer =
     ("/units/locations", "\\{\"UnitLocations\".*\\}"),
     ("/units/status",   "\\{\"UnitStatus\":.*\\}"),
     ("/unit/arm1",   "\\{\"UnitStatus\":.*\\}"),
-    ("/unit/arm1/move?to=Beach",   "\\{\"UnitMoved\":.*\\}")
-  ]
+    ("/unit/arm1/move?to=Beach",   "\\{\"UnitMoved\":.*\\}"),
+    ("/unit/arm1/attack?target=inf1",   "\\{\"UnitReduced\":.*\\}")
+ ]
   
   -- /unit/<name>/location
   -- /unit/<name>/status

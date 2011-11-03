@@ -20,12 +20,13 @@ commandResultIs cmd res = (show cmd) ++ " yields " ++ (take 30 (show res)) ++ ".
  
 commandsHandling = test [
    "Interpreting command" `should` [
-       GetUnitLocations                `commandResultIs` (UnitLocations $ sort unitToLocations),
-       GetUnitStatus                   `commandResultIs` (UnitStatus $ sortBy (comparing fst) unitToStatus),
-       (MoveUnit "arm1" "Beach")       `commandResultIs` (UnitMoved "arm1" "Beach"),
-       (MoveUnit "arm1" "Country")     `commandResultIs` (MoveProhibited "arm1" "Country"),
-       CommandError "error"            `commandResultIs` (ErrorInCommands "unknown command: error"),
-       Exit                            `commandResultIs` Bye
+       GetUnitLocations            `commandResultIs` (UnitLocations $ sort unitToLocations),
+       GetUnitStatus               `commandResultIs` (UnitStatus $ sortBy (comparing fst) unitToStatus),
+       (MoveUnit "arm1" "Beach")   `commandResultIs` (UnitMoved "arm1" "Beach"),
+       (MoveUnit "arm1" "Country") `commandResultIs` (MoveProhibited "arm1" "Country"),
+       (Attack   "arm1" "inf1")    `commandResultIs` (CombatResult [UnitReduced "arm1",UnitMoved "arm1" "Beach"]),
+       CommandError "error"        `commandResultIs` (ErrorInCommands "unknown command: error"),
+       Exit                        `commandResultIs` Bye
       ]
    ,
    "command execution" `should` [

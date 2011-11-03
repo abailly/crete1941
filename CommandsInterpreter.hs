@@ -1,6 +1,7 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving, MultiParamTypeClasses, FlexibleInstances, FlexibleContexts, DeriveDataTypeable, FunctionalDependencies, TupleSections #-}
 module CommandsInterpreter where
 import MovementRules
+import CombatRules
 import Terrain
 import Control.Monad
 import Control.Monad.State
@@ -11,6 +12,7 @@ data Command = GetUnitLocations
              | GetUnitStatus
              | SingleUnitStatus Name
              | MoveUnit Name Name
+             | Attack Name Name
              | CommandError String
              | Help
              | Exit 
@@ -19,7 +21,10 @@ data Command = GetUnitLocations
 data CommandResult = UnitLocations [(Name,Name)]
                    | UnitStatus [(Name,Unit)]
                    | UnitMoved Name Name
+                   | UnitReduced Name
+                   | UnitEliminated Name
                    | MoveProhibited Name Name
+                   | CombatResult [CommandResult]
                    | ErrorInCommands String
                    | Msg [String]
                    | Bye
@@ -39,7 +44,16 @@ executeCommand (MoveUnit un zn) = do t <- get
                                        case m of
                                          NoMove -> MoveProhibited un zn
                                          _      -> UnitMoved un zn
+executeCommand (Attack an dn)   = do t <- get
+                                     let (m,t') = (runState . runBattle) (combat an dn) t
+                                     put t'
+                                     return $ CombatResult (map (combatResult t') m)
 
+combatResult t (Reduce u)    = UnitReduced (unitName u)
+combatResult t (Eliminate u) = UnitEliminated (unitName u)
+combatResult t (Retreat u)   = UnitMoved un (unitLocation un t)
+  where un = unitName u
+                                     
 displayAbout = ["Crete 1941, A Wargame Simulating German Air Assault on Crete",
                 "Game Design by Vae Victis (1998), coded by Arnaud Bailly (2010)"]
                

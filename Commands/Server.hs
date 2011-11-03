@@ -85,14 +85,22 @@ application l ref r = do
       ["units","status"]     -> action ref GetUnitStatus
       ["unit",name]          -> action ref (SingleUnitStatus name)
       ["unit",name,"move"]   -> action ref (decodeMove (queryString r) name Nothing)
+      ["unit",name,"attack"] -> action ref (decodeAttack (queryString r) name Nothing)
       _                      -> return $ respond ("Don't understand request "++ (B8.unpack $ rawPathInfo r)) )
 
 decodeMove :: Query -> String -> Maybe String -> Command
 decodeMove []                  unit (Just to) = MoveUnit unit to
-decodeMove []                  unit  _         = CommandError "moving unit need to define target zone"
-decodeMove ((par,Nothing):xs)  unit  p      = decodeMove xs unit p
-decodeMove ((par,Just val):xs) unit  _     = case B8.unpack par of 
+decodeMove []                  unit  _        = CommandError "moving unit need to define target zone"
+decodeMove ((par,Nothing):xs)  unit  p        = decodeMove xs unit p
+decodeMove ((par,Just val):xs) unit  _        = case B8.unpack par of 
   "to"   -> decodeMove xs unit (Just (B8.unpack val))
+
+decodeAttack :: Query -> String -> Maybe String -> Command
+decodeAttack []                  unit (Just tgt) = Attack unit tgt
+decodeAttack []                  unit  _         = CommandError "attacking with unit need to define target unit"
+decodeAttack ((par,Nothing):xs)  unit  p         = decodeAttack xs unit p
+decodeAttack ((par,Just val):xs) unit  _         = case B8.unpack par of 
+  "target"   -> decodeAttack xs unit (Just (B8.unpack val))
 
 action ::  (BattleMap t, Show t) => TVar t -> Command -> Data.Enumerator.Iteratee B8.ByteString IO Response
 action ref act = do  
