@@ -25,6 +25,8 @@ instance Terrain Theater where
     allUnitLocations   = M.assocs . unitLocations
     unitsIn t n        = M.keys $ M.filter (== n) (unitLocations t)
     allUnitStatus      = M.assocs . unitStatus
+    isZone n t          = (M.lookup n (zoneState t)) /= Nothing
+    isUnit n t          = (M.lookup n (unitStatus t)) /= Nothing
 
 instance BattleMap Theater where
   throwDice              = do t <- S.get

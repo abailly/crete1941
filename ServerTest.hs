@@ -44,10 +44,10 @@ interactThroughAnHttpServer =
     ("/units/status",   "\\{\"UnitStatus\":.*\\}"),
     ("/unit/arm1",   "\\{\"UnitStatus\":.*\\}"),
     ("/unit/arm1/move?to=Beach",   "\\{\"UnitMoved\":.*\\}"),
-    ("/unit/arm1/attack?target=inf1",   "\\{\"UnitReduced\":.*\\}")
+    ("/unit/arm1/attack?target=inf1",   "\\{\"UnitReduced\":.*\\}"),
+    -- error cases
+    ("/unit/arm1/move?to=foo",   "\\{\"ErrorInCommands\":\"zone foo is not a valid zone name\"\\}"),
+    ("/unit/unknown/move?to=Beach",   "\\{\"ErrorInCommands\":\"unit unknown is not a valid unit name\"\\}")
  ]
-  
-  -- /unit/<name>/location
-  -- /unit/<name>/status
   
 

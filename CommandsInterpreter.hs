@@ -31,19 +31,25 @@ data CommandResult = UnitLocations [(Name,Name)]
               deriving (Eq, Show, Read, G.Data, G.Typeable)
 
 executeCommand ::  (BattleMap t, MonadState t s) => Command -> s CommandResult
-executeCommand GetUnitLocations = get >>= return . UnitLocations . allUnitLocations
-executeCommand GetUnitStatus    = get >>= return . UnitStatus . allUnitStatus
+executeCommand GetUnitLocations      = get >>= return . UnitLocations . allUnitLocations
+executeCommand GetUnitStatus         = get >>= return . UnitStatus . allUnitStatus
 executeCommand (SingleUnitStatus un) = get >>= return . UnitStatus . (:[]) . (un,). unit un
-executeCommand (CommandError s) = return $ ErrorInCommands ("unknown command: " ++ s)
-executeCommand Exit             = return Bye
-executeCommand Help             = return $ Msg (displayAbout ++ displayHelp)
-executeCommand (MoveUnit un zn) = do t <- get
-                                     let (m,t') = (runState . runBattle) (move un zn) t
-                                     put t'
-                                     return $ 
-                                       case m of
-                                         NoMove -> MoveProhibited un zn
-                                         _      -> UnitMoved un zn
+executeCommand (CommandError s)      = return $ ErrorInCommands ("unknown command: " ++ s)
+executeCommand Exit                  = return Bye
+executeCommand Help                  = return $ Msg (displayAbout ++ displayHelp)
+executeCommand (MoveUnit un zn)      = do t <- get
+                                          (if not (isZone zn t) then return $ ErrorInCommands ("zone " ++ zn ++ " is not a valid zone name")
+                                           else if not (isUnit un t) then  return $ ErrorInCommands ("unit " ++ un ++ " is not a valid unit name")
+                                                else applyCommand' t)
+  where
+    applyCommand' t = do
+          let (m,t') = (runState . runBattle) (move un zn) t
+          put t'
+          return $ 
+            case m of
+              NoMove -> MoveProhibited un zn
+              _      -> UnitMoved un zn
+
 executeCommand (Attack an dn)   = do t <- get
                                      let (m,t') = (runState . runBattle) (combat an dn) t
                                      put t'

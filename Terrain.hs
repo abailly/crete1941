@@ -26,6 +26,10 @@ class Terrain t where
   allUnitLocations :: t -> [(Name,Name)]
   -- | Give the status of all the units
   allUnitStatus :: t -> [(Name,Unit)]
+  -- | Tells whether or note given name is a valid zone name  
+  isZone :: Name -> t -> Bool
+  -- | Tells whether or note given name is a valid unit name  
+  isUnit :: Name -> t -> Bool
   
 -- | A BattleMap stores the main information of the battle.
 class (Terrain t) => BattleMap t where 
