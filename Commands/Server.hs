@@ -47,7 +47,9 @@ data (BattleMap t, Show t) => Server t = Server {
   threadId      :: Maybe ThreadId,
   serverStatus  :: ServerStatus,
   sharedSession :: TVar t,
-  logger        :: Logger
+  logger        :: Logger,
+  port          :: Int,
+  started       :: UTCTime
   }
                                          
 instance (BattleMap t, Show t) => Show (Server t) where
@@ -64,13 +66,22 @@ startWarpServer ::  (BattleMap t, Show t) => t
 startWarpServer t port sync = do 
   ref <- newTVarIO t
   l  <- makeLogger
-  let server = Server Nothing Stopped ref l
-  timed l (T.pack $ "starting server on "  ++ (show port)) (spawnWarpServer port sync server) 
+  start <- getCurrentTime
+  let server = Server Nothing Stopped ref l port start
+  logString l $ printf "[%s] (0.0s) %s %0d"
+    (formatTime defaultTimeLocale "%Y%m%d%H%M%S%Q" start) 
+    "starting server " port 
+  spawnWarpServer port sync server
                      
 stopWarpServer :: (BattleMap t, Show t) => Server t -> IO (Server t)
-stopWarpServer s@(Server (Just tid) Started _ l) = do
-  logString l $ "stopping server " ++ show s
-  flushLogger l
+stopWarpServer s@(Server (Just tid) Started _ l port start) = do
+  end <- getCurrentTime
+  logString l $ printf "[%s] (%s) %s %0d" 
+    (formatTime defaultTimeLocale "%Y%m%d%H%M%S%Q" end) 
+    (show $ diffUTCTime end start)
+    "stopping server"
+    port
+  flushLogger l 
   killThread tid
   return s { threadId = Nothing, serverStatus = Stopped }
 
@@ -81,7 +92,7 @@ spawnWarpServer :: (BattleMap t, Show t) => Int       -- ^Server listening port
 spawnWarpServer port mvar server = do 
   tid <- forkIO ((run port $ application (logger server) (sharedSession server))
                  `finally` 
-                 (putStrLn "stopping server" >> putMVar mvar ()))
+                 (putMVar mvar ()))
   return $ server { threadId = Just tid, serverStatus = Started }
   
 application :: (BattleMap t, Show t) => Logger -> TVar t -> Application
@@ -99,13 +110,13 @@ logExchange l req action  = do
   start <- lift $ getCurrentTime
   rep@(ResponseBuilder s _ _) <- action
   end <- lift $ getCurrentTime
-  lift $ logString l $ printf "[%s] %s %s %s %s (%s)" 
-    (formatTime defaultTimeLocale "%Y%m%d%H%M%S%Q" start) 
+  lift $ logString l $ printf "[%s] (%s) %s %s %s %s" 
+    (formatTime defaultTimeLocale "%Y%m%d%H%M%S%Q" end) 
+    (show $ diffUTCTime end start)
     (show $ remoteHost req) 
     (show $ requestMethod req) 
     (show $ rawPathInfo req) 
     (show $ statusCode s )
-    (show $ diffUTCTime end start)
   lift $ flushLogger l
   return rep
 
