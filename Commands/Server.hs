@@ -30,6 +30,8 @@ import qualified Data.ByteString.Lazy.Char8 as LB8
 import Data.CaseInsensitive(mk)
 
 import Yesod.Logger
+import Data.Time
+import System.Locale
 
 import Text.Printf(printf)
 
@@ -54,7 +56,6 @@ instance (BattleMap t, Show t) => Show (Server t) where
                 (show $ unsafePerformIO $ readTVarIO $ sharedSession server)
   
                    
-
 startWarpServer :: (BattleMap t, Show t) => t 
                -> Int       -- ^Server listening port
                -> MVar ()   -- ^Channel for notifying server termination
@@ -78,15 +79,27 @@ spawnWarpServer port mvar server = do
   
 application :: (BattleMap t, Show t) => Logger -> TVar t -> Application
 application l ref r = do 
-  timed l (T.pack $ "serving request " ++ show r) (
-    case map T.unpack $ pathInfo r of
+  logExchange l r (case map T.unpack $ pathInfo r of
       ["exit"]               -> action ref Exit
       ["units","locations"]  -> action ref GetUnitLocations
       ["units","status"]     -> action ref GetUnitStatus
       ["unit",name]          -> action ref (SingleUnitStatus name)
       ["unit",name,"move"]   -> action ref (extractParameter "to" (queryString r)  (MoveUnit name))
       ["unit",name,"attack"] -> action ref (extractParameter "tgt" (queryString r) (Attack name ))
-      _                      -> return $ respond ("Don't understand request "++ (B8.unpack $ rawPathInfo r)) )
+      _                      -> return $ respond ("Don't understand request "++ (B8.unpack $ rawPathInfo r)))
+
+logExchange l req action  = do
+  start <- lift $ getCurrentTime
+  rep@(ResponseBuilder s _ _) <- action
+  end <- lift $ getCurrentTime
+  lift $ logString l $ printf "[%s] %s %s %s %s (%s)" 
+    (formatTime defaultTimeLocale "%Y%m%d%H%M%S%Q" start) 
+    (show $ remoteHost req) 
+    (show $ requestMethod req) 
+    (show $ rawPathInfo req) 
+    (show $ statusCode s )
+    (show $ diffUTCTime end start)
+  return rep
 
 extractParameter :: String -> Query -> (String -> Command) -> Command
 extractParameter param query command = case decodeParam query param Nothing of
