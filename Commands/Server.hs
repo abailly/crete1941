@@ -1,5 +1,6 @@
 {-# LANGUAGE FlexibleInstances, GeneralizedNewtypeDeriving, MultiParamTypeClasses, Rank2Types #-}
-module Commands.Server(startWarpServer, application) where
+module Commands.Server(startWarpServer, 
+                       stopWarpServer) where
 
 import Data.ByteString.UTF8 (fromString,toString)
 import Control.Exception(finally)
@@ -7,7 +8,7 @@ import Control.Concurrent(forkIO,myThreadId, ThreadId,putMVar,MVar,newEmptyMVar,
 
 import Data.Enumerator(Iteratee)
 
-import Control.Concurrent(threadDelay)
+import Control.Concurrent(threadDelay, killThread)
 import Control.Concurrent.STM
 
 import System.IO.Unsafe
@@ -56,17 +57,23 @@ instance (BattleMap t, Show t) => Show (Server t) where
                 (show $ unsafePerformIO $ readTVarIO $ sharedSession server)
   
                    
-startWarpServer :: (BattleMap t, Show t) => t 
-               -> Int       -- ^Server listening port
-               -> MVar ()   -- ^Channel for notifying server termination
+startWarpServer ::  (BattleMap t, Show t) => t 
+               -> Int           -- ^Server listening port
+               -> MVar ()       -- ^Channel for notifying server termination
                -> IO (Server t) -- ^A server object which can be used to control the underlying instance
 startWarpServer t port sync = do 
   ref <- newTVarIO t
   l  <- makeLogger
   let server = Server Nothing Stopped ref l
   timed l (T.pack $ "starting server on "  ++ (show port)) (spawnWarpServer port sync server) 
-   
                      
+stopWarpServer :: (BattleMap t, Show t) => Server t -> IO (Server t)
+stopWarpServer s@(Server (Just tid) Started _ l) = do
+  logString l $ "stopping server " ++ show s
+  flushLogger l
+  killThread tid
+  return s { threadId = Nothing, serverStatus = Stopped }
+
 spawnWarpServer :: (BattleMap t, Show t) => Int       -- ^Server listening port
                -> MVar ()   -- ^Channel for notifying server termination
                -> Server t 
@@ -99,6 +106,7 @@ logExchange l req action  = do
     (show $ rawPathInfo req) 
     (show $ statusCode s )
     (show $ diffUTCTime end start)
+  lift $ flushLogger l
   return rep
 
 extractParameter :: String -> Query -> (String -> Command) -> Command
