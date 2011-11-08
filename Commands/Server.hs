@@ -1,4 +1,3 @@
-{-# LANGUAGE FlexibleInstances, GeneralizedNewtypeDeriving, MultiParamTypeClasses, Rank2Types #-}
 module Commands.Server(startWarpServer, 
                        stopWarpServer) where
 
@@ -30,9 +29,9 @@ import qualified Data.ByteString.Char8 as B8
 import qualified Data.ByteString.Lazy.Char8 as LB8
 import Data.CaseInsensitive(mk)
 
-import Yesod.Logger
+import Commands.Log
+
 import Data.Time
-import System.Locale
 
 import Text.Printf(printf)
 
@@ -41,8 +40,6 @@ data ServerStatus =
   Stopped 
   deriving (Eq,Show,Ord)
                 
--- WAI-based low-level I/O
-
 data (BattleMap t, Show t) => Server t = Server {
   threadId      :: Maybe ThreadId,
   serverStatus  :: ServerStatus,
@@ -52,12 +49,16 @@ data (BattleMap t, Show t) => Server t = Server {
   started       :: UTCTime
   }
                                          
+instance (BattleMap t, Show t) => Loggable (Server t) where
+  getLogger = logger 
+  getStartTime = started
+  getIdentifier s = "localhost@" ++ (show $ port s)
+  
 instance (BattleMap t, Show t) => Show (Server t) where
   show server = printf "Server { threadId = %s, serverStatus = %s, sharedSession = %s }"
                 (show $ threadId server)
                 (show $ serverStatus server)
                 (show $ unsafePerformIO $ readTVarIO $ sharedSession server)
-  
                    
 startWarpServer ::  (BattleMap t, Show t) => t 
                -> Int           -- ^Server listening port
@@ -68,19 +69,12 @@ startWarpServer t port sync = do
   l  <- makeLogger
   start <- getCurrentTime
   let server = Server Nothing Stopped ref l port start
-  logString l $ printf "[%s] (0.0s) %s %0d"
-    (formatTime defaultTimeLocale "%Y%m%d%H%M%S%Q" start) 
-    "starting server " port 
+  notifyServerEvent server ServerStart
   spawnWarpServer port sync server
                      
 stopWarpServer :: (BattleMap t, Show t) => Server t -> IO (Server t)
 stopWarpServer s@(Server (Just tid) Started _ l port start) = do
-  end <- getCurrentTime
-  logString l $ printf "[%s] (%s) %s %0d" 
-    (formatTime defaultTimeLocale "%Y%m%d%H%M%S%Q" end) 
-    (show $ diffUTCTime end start)
-    "stopping server"
-    port
+  notifyServerEvent s ServerStop
   flushLogger l 
   killThread tid
   return s { threadId = Nothing, serverStatus = Stopped }
@@ -90,14 +84,14 @@ spawnWarpServer :: (BattleMap t, Show t) => Int       -- ^Server listening port
                -> Server t 
                -> IO (Server t)
 spawnWarpServer port mvar server = do 
-  tid <- forkIO ((run port $ application (logger server) (sharedSession server))
+  tid <- forkIO ((run port $ application server)
                  `finally` 
                  (putMVar mvar ()))
   return $ server { threadId = Just tid, serverStatus = Started }
   
-application :: (BattleMap t, Show t) => Logger -> TVar t -> Application
-application l ref r = do 
-  logExchange l r (case map T.unpack $ pathInfo r of
+application :: (BattleMap t, Show t) => Server t -> Application
+application s r = do 
+  doExchange s r (case map T.unpack $ pathInfo r of
       ["exit"]               -> action ref Exit
       ["units","locations"]  -> action ref GetUnitLocations
       ["units","status"]     -> action ref GetUnitStatus
@@ -105,19 +99,13 @@ application l ref r = do
       ["unit",name,"move"]   -> action ref (extractParameter "to" (queryString r)  (MoveUnit name))
       ["unit",name,"attack"] -> action ref (extractParameter "tgt" (queryString r) (Attack name ))
       _                      -> return $ respond ("Don't understand request "++ (B8.unpack $ rawPathInfo r)))
-
-logExchange l req action  = do
+ where
+   ref = sharedSession s
+     
+doExchange s req action  = do
   start <- lift $ getCurrentTime
-  rep@(ResponseBuilder s _ _) <- action
-  end <- lift $ getCurrentTime
-  lift $ logString l $ printf "[%s] (%s) %s %s %s %s" 
-    (formatTime defaultTimeLocale "%Y%m%d%H%M%S%Q" end) 
-    (show $ diffUTCTime end start)
-    (show $ remoteHost req) 
-    (show $ requestMethod req) 
-    (show $ rawPathInfo req) 
-    (show $ statusCode s )
-  lift $ flushLogger l
+  rep <- action
+  lift $ notifyServerEvent s (HandleRequest req rep start)
   return rep
 
 extractParameter :: String -> Query -> (String -> Command) -> Command
