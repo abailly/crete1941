@@ -15,7 +15,7 @@ import Control.Concurrent(killThread,newEmptyMVar,putMVar)
 
 -- From http://book.realworldhaskell.org/read/extended-example-web-client-programming.html      
 simpleHttpContent url =
-    do resp <- simpleHTTP request
+    do resp <- httpRequest url
        case resp of
          Left x -> return $ ("Error connecting: " ++ show x)
          Right r -> 
@@ -26,17 +26,19 @@ simpleHttpContent url =
                    Nothing -> return $ (show r)
                    Just url -> simpleHttpContent url
                _ -> return $ (show r)
-    where request = Request {rqURI = uri,
-                             rqMethod = GET,
-                             rqHeaders = [],
-                             rqBody = ""}
-          uri = fromJust $ parseURI url
+    
+httpRequest url = let uri = fromJust $ parseURI url
+                  in simpleHTTP $ Request {rqURI = uri, rqMethod = GET,rqHeaders = [],rqBody = ""}
 
 matchReplyContentToRESTCommandsFor t (pat,contentMatch) = do output <- simpleHttpContent ("http://127.0.0.1:" ++ show serverPort ++ pat)
                                                              simpleHttpContent ("http://127.0.0.1:" ++ show serverPort ++ "/exit")
                                                              output ~?~ contentMatch
   
-interactThroughAnHttpServer = 
+responseStatusOf uri = httpRequest ("http://127.0.0.1:" ++ show serverPort ++ uri) >>= either (\e -> error $ "unexpected result" ++ show e) (return.rspCode) 
+responseTypeOf uri = httpRequest ("http://127.0.0.1:" ++ show serverPort ++ uri) >>= 
+                     either (\e -> error $ "unexpected result" ++ show e) (return.fromJust.findHeader HdrContentType) 
+                          
+interactThroughAnHttpServer =  TestList [
   "interacting with Crete 1941 through a REST API"  `shouldBe`
   matchReplyContentToRESTCommandsFor terrain `with`
   [
@@ -48,6 +50,16 @@ interactThroughAnHttpServer =
     -- error cases
     ("/unit/arm1/move?to=foo",   "\\{\"ErrorInCommands\":\"zone foo is not a valid zone name\"\\}"),
     ("/unit/unknown/move?to=Beach",   "\\{\"ErrorInCommands\":\"unit unknown is not a valid unit name\"\\}")
- ]
+  ],
+  "serving static resources"  `should` [ 
+    "respond '404 NOT FOUND' for non existing resource" `for`  
+    responseStatusOf "/does/not/exist" >>= assertEqual "incorrect response status" (4,0,4),
+    
+    "respond '200 OK' for existing resource" `for`  
+    responseStatusOf "/resources/images/1-7th-rtr.png" >>= assertEqual "incorrect response status" (2,0,0),
+    
+    "provide correct mime-type for existing resource" `for`  
+    responseTypeOf "/resources/images/carte1.jpg" >>= assertEqual "incorrect response status" "image/jpeg"
+    ]
+  ]
   
-

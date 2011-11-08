@@ -6,11 +6,13 @@ import Control.Exception(finally)
 import Control.Concurrent(forkIO,myThreadId, ThreadId,putMVar,MVar,newEmptyMVar,takeMVar)
 
 import Data.Enumerator(Iteratee)
+import Data.List(intersperse)
 
 import Control.Concurrent(threadDelay, killThread)
 import Control.Concurrent.STM
 
 import System.IO.Unsafe
+import System.FilePath
 
 import Control.Monad.Trans(lift)
 import Control.Monad.State(runState)
@@ -31,6 +33,8 @@ import Data.CaseInsensitive(mk)
 
 import Commands.Log
 
+import Debug.Trace
+
 import Data.Time
 
 import Text.Printf(printf)
@@ -46,7 +50,8 @@ data (BattleMap t, Show t) => Server t = Server {
   sharedSession :: TVar t,
   logger        :: Logger,
   port          :: Int,
-  started       :: UTCTime
+  started       :: UTCTime,
+  baseDirectory :: FilePath
   }
                                          
 instance (BattleMap t, Show t) => Loggable (Server t) where
@@ -63,17 +68,18 @@ instance (BattleMap t, Show t) => Show (Server t) where
 startWarpServer ::  (BattleMap t, Show t) => t 
                -> Int           -- ^Server listening port
                -> MVar ()       -- ^Channel for notifying server termination
+               -> Maybe FilePath      -- ^Base directory the server runs in 
                -> IO (Server t) -- ^A server object which can be used to control the underlying instance
-startWarpServer t port sync = do 
+startWarpServer t port sync basedir = do 
   ref <- newTVarIO t
   l  <- makeLogger
   start <- getCurrentTime
-  let server = Server Nothing Stopped ref l port start
+  let server = Server Nothing Stopped ref l port start (maybe "." id basedir)
   notifyServerEvent server ServerStart
   spawnWarpServer port sync server
                      
 stopWarpServer :: (BattleMap t, Show t) => Server t -> IO (Server t)
-stopWarpServer s@(Server (Just tid) Started _ l port start) = do
+stopWarpServer s@(Server (Just tid) Started _ l port start dir) = do
   notifyServerEvent s ServerStop
   flushLogger l 
   killThread tid
@@ -92,16 +98,32 @@ spawnWarpServer port mvar server = do
 application :: (BattleMap t, Show t) => Server t -> Application
 application s r = do 
   doExchange s r (case map T.unpack $ pathInfo r of
+      ("resources":path)     -> tryServeFile s (concat $ intersperse "/" path)
       ["exit"]               -> action ref Exit
       ["units","locations"]  -> action ref GetUnitLocations
       ["units","status"]     -> action ref GetUnitStatus
       ["unit",name]          -> action ref (SingleUnitStatus name)
       ["unit",name,"move"]   -> action ref (extractParameter "to" (queryString r)  (MoveUnit name))
       ["unit",name,"attack"] -> action ref (extractParameter "tgt" (queryString r) (Attack name ))
-      _                      -> return $ respond ("Don't understand request "++ (B8.unpack $ rawPathInfo r)))
+      _                      -> return $ respond statusNotFound ("Don't understand request "++ (B8.unpack $ rawPathInfo r)))
  where
    ref = sharedSession s
      
+tryServeFile server path = do
+  let file = (baseDirectory server </> path)
+  return $ ResponseFile statusOK [(mk $ B8.pack "Content-Type", B8.pack (inferContentType file))] file Nothing
+
+inferContentType file =  case splitExtension file of 
+        (_,".jpg")  -> "image/jpeg"
+        (_,".png")  -> "image/png"
+        (_,".txt")  -> "text/plain"
+        (_,".xml")  -> "application/xml"
+        (_,".html") -> "text/html"
+        (_,".css")  -> "text/css"
+        (_,".js")   -> "application/javascript"
+        (_,".json") -> "application/json"
+        (f,e)       -> "application/octet-stream" 
+
 doExchange s req action  = do
   start <- lift $ getCurrentTime
   rep <- action
@@ -126,6 +148,6 @@ action ref act = do
     let (r,t') = runState (executeCommand act) t
     writeTVar ref t'
     return r
-  return $ respond result
+  return $ respond statusOK result
     
-respond r         = responseLBS statusOK [(mk $ B8.pack "Content-Type", B8.pack "application/json")] (LB8.pack $ JG.encodeJSON r)
+respond status r  = responseLBS status  [(mk $ B8.pack "Content-Type", B8.pack "application/json")] (LB8.pack $ JG.encodeJSON r)

@@ -23,19 +23,19 @@ data ServerEvent = ServerStart
 notifyServerEvent :: (Loggable l) =>  
                      l -> ServerEvent -> IO l
 notifyServerEvent s ServerStart =  getCurrentTime >>= 
-                                   (\start -> logString (getLogger s) $ printf "[%s] (0.0s) %s %0d"
+                                   (\start -> logString (getLogger s) $ printf "[%s] (0.0s) %s %s"
                                              (formatTime defaultTimeLocale "%Y%m%d%H%M%S%Q" start) 
-                                             "starting server " (getIdentifier s))
+                                             (getIdentifier s) "starting server" )
                                    >> return s
 
 notifyServerEvent s ServerStop =  getCurrentTime >>= 
-                                  (\time -> logString (getLogger s) $ printf "[%s] (%s) %s %0d"
+                                  (\time -> logString (getLogger s) $ printf "[%s] (%s) %s %s"
                                             (formatTime defaultTimeLocale "%Y%m%d%H%M%S%Q" time) 
                                             (show $ diffUTCTime time (getStartTime s))
-                                            "stopping server " (getIdentifier s))
+                                             (getIdentifier s) "stopping server")
                                   >> return s
 notifyServerEvent s (HandleRequest req (ResponseBuilder st _ _) start) = getCurrentTime >>=
-                                                    (\end -> logString (getLogger s) $ printf "[%s] (%s) %s %s %s %s" 
+                                                    (\end -> logString (getLogger s) $ printf "[%s] (%s) %s %s %s %s %s" 
                                                              (formatTime defaultTimeLocale "%Y%m%d%H%M%S%Q" end) 
                                                              (show $ diffUTCTime end start)
                                                              (getIdentifier s) 
@@ -43,5 +43,18 @@ notifyServerEvent s (HandleRequest req (ResponseBuilder st _ _) start) = getCurr
                                                              (show $ requestMethod req) 
                                                              (show $ rawPathInfo req) 
                                                              (show $ statusCode st))
+                                                    >> return s
+  
+notifyServerEvent s (HandleRequest req (ResponseFile st _ path _) start) = getCurrentTime >>=
+                                                    (\end -> logString (getLogger s) $ printf "[%s] (%s) %s %s %s %s %s (-> %s)" 
+                                                             (formatTime defaultTimeLocale "%Y%m%d%H%M%S%Q" end) 
+                                                             (show $ diffUTCTime end start)
+                                                             (getIdentifier s) 
+                                                             (show $ remoteHost req) 
+                                                             (show $ requestMethod req) 
+                                                             (show $ rawPathInfo req) 
+                                                             (show $ statusCode st)
+                                                             path
+                                                             )
                                                     >> return s
   
