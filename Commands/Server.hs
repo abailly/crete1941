@@ -97,18 +97,24 @@ spawnWarpServer port mvar server = do
   
 application :: (BattleMap t, Show t) => Server t -> Application
 application s r = do 
-  doExchange s r (case map T.unpack $ pathInfo r of
-      ("resources":path)     -> tryServeFile s (concat $ intersperse "/" path)
-      ["exit"]               -> action ref Exit
-      ["units","locations"]  -> action ref GetUnitLocations
-      ["units","status"]     -> action ref GetUnitStatus
-      ["unit",name]          -> action ref (SingleUnitStatus name)
-      ["unit",name,"move"]   -> action ref (extractParameter "to" (queryString r)  (MoveUnit name))
-      ["unit",name,"attack"] -> action ref (extractParameter "tgt" (queryString r) (Attack name ))
-      _                      -> return $ respond statusNotFound ("Don't understand request "++ (B8.unpack $ rawPathInfo r)))
+  doExchange s r 
+    (case routing r of
+      (GET,  ("resources":path))     -> tryServeFile s (concat $ intersperse "/" path)
+      (POST, ["exit"])               -> action ref Exit
+      (GET,  ["units","locations"])  -> action ref GetUnitLocations
+      (GET,  ["units","status"])     -> action ref GetUnitStatus
+      (GET,  ["unit",name])          -> action ref (SingleUnitStatus name)
+      (POST, ["unit",name,"move"])   -> action ref (extractParameter "to" (queryString r)  (MoveUnit name))
+      (POST, ["unit",name,"attack"]) -> action ref (extractParameter "tgt" (queryString r) (Attack name ))
+      unknown                        -> return $ respond statusNotFound ("Don't understand request "++ (B8.unpack $ rawPathInfo r)))
  where
    ref = sharedSession s
-     
+   routing :: Request -> (StdMethod, [String])
+   routing (Request method _ _ _ _ _ _ _ _ pinfo _) = (either 
+                                                       (\t -> error $ "incorrect method " ++ (show t)) id 
+                                                       (parseMethod method), 
+                                                       map T.unpack pinfo)
+   
 tryServeFile server path = do
   let file = (baseDirectory server </> path)
   return $ ResponseFile statusOK [(mk $ B8.pack "Content-Type", B8.pack (inferContentType file))] file Nothing

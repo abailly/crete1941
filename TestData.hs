@@ -23,7 +23,9 @@ hq5Brigade      = Unit "HQ 5th Brigade" British Full (UnitState 3 3 0) RegimentH
 greek1stRgt     = Unit "Greek 1st Reg" British Full (UnitState 2 2 4) Infantry (Just hq5Brigade)
 nz21stBat       = Unit "NZ 21st Bat" British Full (UnitState 2 3 6) Infantry (Just hq5Brigade)
 nz22ndBat       = Unit "NZ 22nd Bat" British Full (UnitState 4 3 6) Infantry (Just hq5Brigade)
-
+rtr17th         = Unit "1-7th-rtr" British Full (UnitState 2 6 12) Armoured  Nothing 
+aa156th         = Unit "156th-aa" British Full (UnitState 4 2 6) Artillery Nothing
+  
 rethymnon       = Zone "Rethymnon" Unoccupied [City,Port] Flat
 beach           = Zone "Beach" Unoccupied [Clear,Port,Beach] Flat
 roughWithRoad   = Zone "Rough" Unoccupied [Clear, Road] Rough
@@ -35,6 +37,9 @@ roadCountry     = Zone "CountryRoad" Unoccupied [Wood] Hilly
 mountain        = Zone "Mountain" Unoccupied [Wood] Mountain
 strategicZone   = Zone "A" Unoccupied [Strategic] Mountain
 nonAdjacentZone = Zone "Other" Unoccupied [Clear] Flat
+lacannee        = Zone "LaCannee" Unoccupied [City,Port] Flat
+lacanneenorth   = Zone "LaCanneeNorth" Unoccupied [Town,Clear,Wood] Mountain
+souda           = Zone "Souda" Unoccupied [Town,Objective,Wood] Mountain
 
 unitToLocations = [("Campbell", "Rethymnon"), 
                    ("hq1", "Beach"),
@@ -46,7 +51,9 @@ unitToLocations = [("Campbell", "Rethymnon"),
                    ("I/85 Rgt", "CountryRoad"),
                    ("NZ 22nd Bat", "Rethymnon"),
                    ("Greek 1st Reg", "CountryRoad"),
-                   ("NZ 21st Bat", "Hilly")
+                   ("NZ 21st Bat", "Hilly"),
+                   ("156th-aa", "LaCannee"),
+                   ("1-7th-rtr", "Souda")
                    ]
 unitToStatus      = [("Campbell", britishHQ),
                      ("arm1", germanArm), 
@@ -58,13 +65,20 @@ unitToStatus      = [("Campbell", britishHQ),
                      ("I/85 Rgt", gj85Rgt),
                      ("Greek 1st Reg", greek1stRgt),
                      ("NZ 22nd Bat",nz22ndBat),
-                     ("NZ 21st Bat",nz21stBat)]
+                     ("NZ 21st Bat",nz21stBat),
+                     ("156th-aa",aa156th),
+                     ("1-7th-rtr", rtr17th)
+                    ]
 zoneToStatus      = [("Rethymnon", rethymnon), 
                      ("Beach", beach), 
                      ("Rough", roughWithRoad), 
                      ("CountryRoad",roadCountry),
                      ("Country",countryside),
-                     ("Hilly",hilly)]
+                     ("Hilly",hilly),
+                     ("LaCannee",lacannee),
+                     ("LaCanneeNorth",lacanneenorth),
+                     ("Souda",souda)
+                     ]
 terrain     = Theater [("Rethymnon",[("Beach", True),
                                      ("Country", False),
                                      ("Rough", False),
@@ -74,7 +88,13 @@ terrain     = Theater [("Rethymnon",[("Beach", True),
                                      ("A", False)]),
                        ("Beach",[("Rethymnon", True),
                                  ("Rough", False)]),
-                       ("Hilly",[])]
+                       ("Hilly",[]),
+                       ("LaCannee", [("Souda", True),
+                                     ("LaCanneeNorth", True)]),
+                       ("LaCanneeNorth", [("Souda", True),
+                                          ("LaCannee", True)]),
+                       ("Souda", [("LaCannee", True),
+                                  ("LaCanneeNorth", True)])]
               (M.fromList unitToLocations) 
               (M.fromList zoneToStatus)
               (M.fromList unitToStatus)
