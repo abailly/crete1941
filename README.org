@@ -1,1 +1,47 @@
 An experimental wargame written in Haskell, about the air assault on Crete by German paratroopers in 1941.
+
+* Infrastructure
+
+** Logs
+*** TODO make logs configurable to output to file
+ - need to hijack Yesod.Logger which is currently used and make it more configurable
+ - merge with Log.hs and Loggable class
+*** TODO make logs more "transparent"
+ - current logging is a bit intrusive, define something like a monad transformer for logging or maybe a template?x 
+*** TODO automatic generation of graphs from logs using timeplot
+
+** Network
+*** TODO restructure project to use supervising system
+ - main should supervise application within a nested directory
+
+** Reloader
+*** TODO reloader should use GHC Api for loading modules
+
+* Game Mechanics
+
+** Commands
+*** TODO orders generation with autocompletion
+*** TODO interpret orders and send correct query
+*** TODO interpret orders' result in the front-end
+
+** Game management
+*** TODO create a different new game
+*** TODO save a game in progress
+*** TODO load an existing game
+*** TODO delete an existing game in progress
+
+** Users management
+*** TODO registration of users: signup, signin, signout
+
+** Data
+*** TODO complete images for units
+*** TODO compute coordinates for all zone
+*** TODO manage stacking of several units in same zone
+ - units should be displayed in one stack per country with a slight offset 
+ - it should be possible to select one unit to bring to front
+ - content of stack should be inspectable
+*** TODO complete data definition for start game
+*** TODO make data definition be dynamically loaded at startup of game
+
+** AI 
+Everything :-)
