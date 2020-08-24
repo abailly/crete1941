@@ -1,10 +1,13 @@
-{-# LANGUAGE MultiParamTypeClasses, FunctionalDependencies, GeneralizedNewtypeDeriving, DeriveDataTypeable #-}
+{-# LANGUAGE DeriveDataTypeable         #-}
+{-# LANGUAGE FunctionalDependencies     #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE MultiParamTypeClasses      #-}
 module Terrain where
-import Common
-import Units
-import qualified Data.Map as M
+import           Common
 import qualified Control.Monad.State as C
-import qualified Data.Generics as G
+import qualified Data.Generics       as G
+import qualified Data.Map            as M
+import           Units
 
 class Terrain t where
   -- | Tell whether or not two zones identified by their name are connected
@@ -13,7 +16,7 @@ class Terrain t where
   -- Just True if they are connected by road.
   connection  :: t -> Name -> Name -> Maybe Bool
   -- | List all zones adjacent to a given zone.
-  adjacentZones :: t -> Name -> [Name] 
+  adjacentZones :: t -> Name -> [Name]
   -- | Gives the current location of the given named unit within the terrain
   unitLocation :: Name  -> t -> Name
   -- | Gives the zone data associated with given name
@@ -26,9 +29,9 @@ class Terrain t where
   allUnitLocations :: t -> [(Name,Name)]
   -- | Give the status of all the units
   allUnitStatus :: t -> [(Name,Unit)]
-  
+
 -- | A BattleMap stores the main information of the battle.
-class (Terrain t) => BattleMap t where 
+class (Terrain t) => BattleMap t where
   -- | Tell whether or not two zones identified by their name are connected or not
   areConnected  :: Name -> Name -> Battle t (Maybe Bool)
   -- | Gives the current location of the given named unit within the terrain
@@ -37,7 +40,7 @@ class (Terrain t) => BattleMap t where
   statusOf :: Name -> Battle t Unit
   -- | Unit is eliminated
   eliminate :: Unit -> Battle t Unit
-  -- | Change the status of the unit 
+  -- | Change the status of the unit
   updateStatusOf :: Unit -> Battle t Unit
   -- | Gives the zone data associated with given name
   zoneDataFor  :: Name -> Battle t Zone
@@ -45,20 +48,20 @@ class (Terrain t) => BattleMap t where
   setZoneDataFor  :: Name -> Zone -> Battle t Zone
   -- | Ensure unit's position is modified.
   updateMovedUnit :: Unit -> Zone -> Battle t Unit
-  -- | Get a single dice throw 
+  -- | Get a single dice throw
   throwDice :: Battle t Integer
-  
+
 -- |Concrete type holding the state of the ongoing battle
 -- Implements state monad.
 newtype (BattleMap t) => Battle t a = Battle { runBattle :: C.State t a}
-                     deriving (Monad, C.MonadState t)
-                              
+                     deriving (Applicative, Functor, Monad, C.MonadState t)
+
 isConnectedByRoadTo :: (Terrain t) => t -> Name -> Name -> Bool
 isConnectedByRoadTo t n1 n2 = connection t n1 n2 == Just True
 
 adjacent :: (Terrain t) => t -> Name -> Name -> Bool
 adjacent t n1 n2 = connection t n1 n2 /= Nothing
-     
+
 
 data Control = Occupied (Either Side ())
              | Unoccupied
@@ -68,10 +71,10 @@ data Control = Occupied (Either Side ())
 
 isBritishControlled z2@(Zone _ (Occupied (Left British)) _ _ ) = True
 isBritishControlled  _                                         = False
-  
+
 isGermanControlled z2@(Zone _ (Occupied (Left German)) _ _ ) = True
 isGermanControlled  _                                        = False
-  
+
 isFriendlyTo :: Side -> Zone -> Bool
 isFriendlyTo s (Zone _ (Occupied (Left s')) _ _ ) | s == s' = True
 isFriendlyTo _ (Zone _ (Unoccupied) _ _ )                   = True
@@ -83,9 +86,9 @@ isHostileTo s = not . isFriendlyTo s
 data Landscape = Flat
               | Rough
               | Hilly
-              | Mountain 
+              | Mountain
               deriving (Eq, Show, Read, G.Data, G.Typeable)
-                   
+
 data TerrainType = Port
                  | Beach
                  | Strategic
@@ -97,10 +100,10 @@ data TerrainType = Port
                  | Village
                  | Clear
                    deriving (Eq, Show, Read, G.Data, G.Typeable)
-                   
-data Zone = Zone { zoneName              :: Name, 
-                   zoneControl           :: Control, 
-                   zoneTerrainAttributes :: [TerrainType], 
+
+data Zone = Zone { zoneName              :: Name,
+                   zoneControl           :: Control,
+                   zoneTerrainAttributes :: [TerrainType],
                    zoneScape             :: Landscape }
           deriving (Eq, Show, Read, G.Data, G.Typeable)
 

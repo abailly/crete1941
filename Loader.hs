@@ -12,41 +12,40 @@ This loader does the following:
 -}
 
 module Loader where
-import System
-import System.IO
-import System.IO.Error(catch)
-import System.Process
-import System.Exit
 
-import Network.Socket
-import Network.Multicast
+import           Control.Exception    (catch)
+import           System.Exit
+import           System.IO
+import           System.Process
 
-import Control.Exception
-import Control.Concurrent
-import Control.Monad(filterM)
-import qualified Data.Map as M
-import System.FilePath
-import Debug.Trace(trace)
-import Data.Maybe(fromJust)
+import           Network.Socket
 
-import Loader.Communication
-import Loader.FilesMonitor
-import Loader.Recompile
+import           Control.Concurrent
+import           Control.Exception
+import           Control.Monad        (filterM)
+import qualified Data.Map             as M
+import           Data.Maybe           (fromJust)
+import           Debug.Trace          (trace)
+import           System.FilePath
+
+import           Loader.Communication
+import           Loader.FilesMonitor
+import           Loader.Recompile
 
 defaultLoaderPort :: Int
 defaultLoaderPort = 13579
 
 -- |Reloader configuration and current status for monitoring one application
 data HotReloader = HotReloader {
-  loaderFilter    ::  (FilePath -> Bool),  -- ^Filter applied to found files, only matching files are monitored
-  reloadDelay     :: Int,                  -- ^Delay between each reloading attempt, in microseconds
-  scanStatus      :: HashMap,              -- ^Status of scanned files 
-  runCount        :: Int,                  -- ^Stop reloader after this number of runs
-  supervising     :: Supervised,
+  loaderFilter      ::  (FilePath -> Bool),  -- ^Filter applied to found files, only matching files are monitored
+  reloadDelay       :: Int,                  -- ^Delay between each reloading attempt, in microseconds
+  scanStatus        :: HashMap,              -- ^Status of scanned files
+  runCount          :: Int,                  -- ^Stop reloader after this number of runs
+  supervising       :: Supervised,
   runningSupervisor :: Maybe Supervisor
   }
-                    
-mkReloaderConfig :: (FilePath -> Bool) -> String -> FilePath -> [String] -> Int -> Int ->  
+
+mkReloaderConfig :: (FilePath -> Bool) -> String -> FilePath -> [String] -> Int -> Int ->
                     HotReloader
 mkReloaderConfig flt main root args count port = HotReloader flt 5000000 M.empty count (Supervised "reloaded" root main args Nothing (Just port) (Just "127.0.0.1") ) Nothing
 
@@ -60,10 +59,10 @@ killAndRelaunch :: HotReloader -> IO ()
 killAndRelaunch c | runCount c == 0 = stopWithNickName "reloaded" (fromJust $ runningSupervisor c) >> return ()
 killAndRelaunch c | runCount c /= 0 = do
   (what,state') <- recompile c
-  let c' = c { scanStatus = state' , runCount = runCount c - 1 } 
+  let c' = c { scanStatus = state' , runCount = runCount c - 1 }
   case what of
     Nothing       -> threadDelay (reloadDelay c)  >> killAndRelaunch c'
-    Just (ex,out) -> stopWithNickName "reloaded" (fromJust $ runningSupervisor c') >> 
+    Just (ex,out) -> stopWithNickName "reloaded" (fromJust $ runningSupervisor c') >>
                      case ex of
                        ExitSuccess -> do
                          putStrLn out
@@ -71,20 +70,20 @@ killAndRelaunch c | runCount c /= 0 = do
                          (s',pid) <- supervise (supervising c') (fromJust $ runningSupervisor c')
                          putStrLn $ "Process restarted"
                          killAndRelaunch $ c' { runningSupervisor = Just s'}
-                       _           -> do 
+                       _           -> do
                          putStrLn $ "Failed to recompile process " ++ (mainModule.supervising $ c) ++ ", giving up.\n" ++ out
                          killAndRelaunch c'
   where
-    
+
 -- | Recompile application if there is any change in the underlying
 -- source files.
 recompile :: HotReloader ->                       -- ^Root directory to scan changes in
              IO (Maybe (ExitCode,String),HashMap) -- ^If application has been recompiled, log the result, otherwise Nothing
 recompile c = do
   (changes,state') <- checkChanges (loaderFilter c) [(rootDirectory.supervising $  c)] (scanStatus c)
-  if changes /= [] then  
-    doRecompile (mainModule.supervising $  c) (rootDirectory.supervising $  c) >>= \log -> return (Just log, state')  
-    else    
+  if changes /= [] then
+    doRecompile (mainModule.supervising $  c) (rootDirectory.supervising $  c) >>= \log -> return (Just log, state')
+    else
     return (Nothing, state')
-    
+
 

@@ -1,11 +1,10 @@
-module Loader.Recompile where
-import           Control.Concurrent (forkIO, newEmptyMVar, putMVar, takeMVar)
-import           Control.Exception  (evaluate)
-import           System.Exit        (ExitCode)
-import           System.FilePath    (FilePath)
-import           System.IO          (hClose, hGetContents)
-import           System.Process     (CreateProcess (..), StdStream (CreatePipe),
-                                     createProcess, proc, waitForProcess)
+module Loader.Builder where
+import           Control.Concurrent
+import           Control.Exception
+import           System.Exit
+import           System.FilePath
+import           System.IO
+import           System.Process
 
 
 doRecompile :: String -> FilePath -> IO (ExitCode,String)

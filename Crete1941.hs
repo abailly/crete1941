@@ -1,29 +1,29 @@
 module Main where
-import CommandsInterpreter
-import Commands.IO
-import TestData
-import AllTests
-import System.Exit
-import System.IO
-import Network
-import System
-import Control.Monad
-import Control.Monad.Trans
-import Control.Monad.State
-import Commands.Server
-import Control.Concurrent
+import           AllTests
+import           Commands.IO
+import           CommandsInterpreter
+import           Control.Concurrent
+import           Control.Monad
+import           Control.Monad.State
+import           Control.Monad.Trans
+import           Network
+import           System.Environment
+import           System.Exit
+import           System.IO
+import           TestData
 
-import Loader.Communication
+import           Commands.Server
+import           Loader.Communication
 
 main = do args <- getArgs
-          case args of 
+          case args of
             ["test"] -> withSocketsDo $ do mvar <- newEmptyMVar
-                                           startServer terrain (fromIntegral serverPort)  mvar          
-                                           runAllTests 
+                                           startServer terrain (fromIntegral serverPort)  mvar
+                                           runAllTests
                                            return ExitSuccess
             _        -> withSocketsDo $ do mvar <- newEmptyMVar
-                                           startServer terrain (fromIntegral serverPort)  mvar          
-                                           runAllTests 
+                                           startServer terrain (fromIntegral serverPort)  mvar
+                                           runAllTests
                                            takeMVar mvar
                                            return ExitSuccess
 
